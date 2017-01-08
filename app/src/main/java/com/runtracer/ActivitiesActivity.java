@@ -1,12 +1,9 @@
 package com.runtracer;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -17,8 +14,6 @@ import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
 import android.widget.ExpandableListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,7 +27,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -72,10 +66,10 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_activities);
 
-		mEmail= (FloatingActionButton) findViewById(R.id.fab);
+		mEmail = (FloatingActionButton) findViewById(R.id.fab);
 		mEmail.setOnClickListener(this);
 
-		mShowChart= (FloatingActionButton) findViewById(R.id.fab_show_chart);
+		mShowChart = (FloatingActionButton) findViewById(R.id.fab_show_chart);
 		mShowChart.setOnClickListener(this);
 
 		mToolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -83,15 +77,15 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 		setSupportActionBar(mToolbar);
 
-		activityInfoMap= new HashMap<Long,RunData>();
-		filteredActivityInfoMap= new HashMap<Long,RunData>();
-		activityInfoMap= (HashMap) getIntent().getSerializableExtra("RunInfo");
-		user_data= (UserData) getIntent().getSerializableExtra("UserData");
-		listDataChildToRunIdCorrelation= new HashMap<>();
+		activityInfoMap = new HashMap<Long, RunData>();
+		filteredActivityInfoMap = new HashMap<Long, RunData>();
+		activityInfoMap = (HashMap) getIntent().getSerializableExtra("RunInfo");
+		user_data = (UserData) getIntent().getSerializableExtra("UserData");
+		listDataChildToRunIdCorrelation = new HashMap<>();
 
 		getActivities();
 
-		mActivitySummary= (TextView) findViewById(R.id.activity_summary);
+		mActivitySummary = (TextView) findViewById(R.id.activity_summary);
 		mActivityListAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
 		mActivitiesList = (ExpandableListView) findViewById(R.id.activities_list1);
 		prepareListData();
@@ -137,32 +131,38 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 	}
 
-	public ActivitiesActivity(){
+	public ActivitiesActivity() {
 	}
 
-	private int getScaleY(int pic_height){
+	private int getScaleY(int pic_height) {
 		Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
-		int height= display.getHeight();
+		int height = display.getHeight();
 		Double val;
-		val = new Double(height)/new Double(pic_height);
+		val = (double) height / (double) pic_height;
 		val = val * 100d;
 		return val.intValue();
 	}
 
-	private int getScaleX(int pic_width){
+	private int getScaleX(int pic_width) {
 		Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
 		int width = display.getWidth();
 		Double val;
-		val = new Double(width)/new Double(pic_width);
+		val = (double) width / (double) pic_width;
 		val = val * 100d;
 		return val.intValue();
 	}
 
 	public boolean showActivity(int childposition) {
-		writeLog(String.format("showActivity: received: %d", childposition));
-		this.selected_run_id= listDataChildToRunIdCorrelation.get(childposition);
-		mActivitySummary.setText(String.format("Run ID: %d", this.selected_run_id));
-	return true;
+		writeLog(String.format(Locale.US, "showActivity: received: %d", childposition));
+		if (!listDataChildToRunIdCorrelation.isEmpty() && listDataChildToRunIdCorrelation.containsKey(childposition) ) {
+			writeLog(String.format(Locale.US, "showActivity: before this.selected_run_id: %d", this.selected_run_id));
+			this.selected_run_id = listDataChildToRunIdCorrelation.get(childposition);
+			writeLog(String.format(Locale.US, "showActivity: after this.selected_run_id: %d", this.selected_run_id));
+			mActivitySummary.setText(String.format(Locale.US, "Run ID: %d", this.selected_run_id));
+		} else {
+			return false;
+		}
+		return true;
 	}
 
 	public String getActivityInfo(Integer ckey) {
@@ -170,9 +170,9 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 		if (filteredActivityInfoMap.containsKey(ckey)) {
 			RunData lrun;
-			lrun= (RunData) filteredActivityInfoMap.get(ckey);
+			lrun = (RunData) filteredActivityInfoMap.get(ckey);
 			lrun.getValues();
-			info=String.format("%s\ndistance: %.2f \ncalories: %.2f", lrun.getStartTime(), lrun.distance_km_v, lrun.calories_v_distance);
+			info = String.format(Locale.US, "%s\ndistance: %.2f \ncalories: %.2f", lrun.getStartTime(), lrun.distance_km_v, lrun.calories_v_distance);
 		}
 		writeLog(String.format("getActivityInfo: %s", info));
 		return info;
@@ -180,7 +180,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new java.util.Date()).toString());
-		//Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
 	public int getActivities() {
@@ -188,17 +188,17 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		Integer ckey;
 
 		RunData lruninfo;
-		Iterator itk= keys.iterator();
+		Iterator itk = keys.iterator();
 
-		for (;itk.hasNext();) {
+		for (; itk.hasNext(); ) {
 			ckey = (Integer) itk.next();
-			writeLog(String.format("activityInfoMap: ckey: %d", ckey));
+			writeLog(String.format(Locale.US, "activityInfoMap: ckey: %d", ckey));
 			lruninfo = (RunData) activityInfoMap.get(ckey);
 			writeLog(String.format("activityInfoMap: run_date_start: %s", lruninfo.run_date_start));
 			writeLog(String.format("activityInfoMap: run_id: %s", lruninfo.run_id_v));
 			writeLog(String.format("activityInfoMap: calories: %s", lruninfo.calories_v_distance));
 
-			if ( (lruninfo.run_id_v > 0) ) {
+			if ((lruninfo.run_id_v > 0)) {
 				/*
 				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 				lruninfo.run_date_start_v= new Date();
@@ -208,7 +208,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				if (lruninfo.run_date_start_v.getTime() > 10000000) {
 					*/
 				if (lruninfo.getStartTime_v() > 10000000) {
-					writeLog(String.format("adding to filteredActivityInfoMap: ckey: %d", ckey));
+					writeLog(String.format(Locale.US, "adding to filteredActivityInfoMap: ckey: %d", ckey));
 					filteredActivityInfoMap.put(ckey, lruninfo);
 				}
 			}
@@ -237,28 +237,28 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		List<String> allActivity = new ArrayList<String>();
 
 		RunData lruninfo;
-		Iterator itv= keys.iterator();
-		for (; itv.hasNext();) {
+		Iterator itv = keys.iterator();
+		for (; itv.hasNext(); ) {
 			ckey = (Integer) itv.next();
-			writeLog(String.format("ckey: %d", ckey));
+			writeLog(String.format(Locale.US, "ckey: %d", ckey));
 			if (filteredActivityInfoMap.containsKey(ckey)) {
 				lruninfo = (RunData) filteredActivityInfoMap.get(ckey);
-				writeLog(String.format("filteredActivityInfoMap.get(%d): run_date_start: %s", ckey, lruninfo.run_date_start));
+				writeLog(String.format(Locale.US, "filteredActivityInfoMap.get(%d): run_date_start: %s", ckey, lruninfo.run_date_start));
 				if ((lruninfo.run_id_v > 0)) {
-					String data_info=getActivityInfo(lruninfo.run_id_v);
+					String data_info = getActivityInfo(lruninfo.run_id_v);
 					allActivity.add(data_info);
-					int pos= allActivity.indexOf(data_info);
+					int pos = allActivity.indexOf(data_info);
 					listDataChildToRunIdCorrelation.put(pos, lruninfo.run_id_v);
 					try {
-						Calendar cdate= Calendar.getInstance();
-						String thismonthcomparedate= String.format("%04d-%02d-%02d %02d:%02d:%02d am", cdate.get(Calendar.YEAR), cdate.get(Calendar.MONTH)+1, 1, 0,0,0 );
-						String lastmonthcomparedate= String.format("%04d-%02d-%02d %02d:%02d:%02d am", cdate.get(Calendar.YEAR), cdate.get(Calendar.MONTH), 1, 0,0,0 );
+						Calendar cdate = Calendar.getInstance();
+						String thismonthcomparedate = String.format(Locale.US, "%04d-%02d-%02d %02d:%02d:%02d am", cdate.get(Calendar.YEAR), cdate.get(Calendar.MONTH) + 1, 1, 0, 0, 0);
+						String lastmonthcomparedate = String.format(Locale.US, "%04d-%02d-%02d %02d:%02d:%02d am", cdate.get(Calendar.YEAR), cdate.get(Calendar.MONTH), 1, 0, 0, 0);
 						//if(lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
-						if(lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
+						if (lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
 							//thisMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
 							thisMonth.add(getActivityInfo(lruninfo.run_id_v));
 						}
-						if(lruninfo.run_date_start_v.after(format.parse(lastmonthcomparedate))  &&  lruninfo.run_date_start_v.before(format.parse(thismonthcomparedate))) {
+						if (lruninfo.run_date_start_v.after(format.parse(lastmonthcomparedate)) && lruninfo.run_date_start_v.before(format.parse(thismonthcomparedate))) {
 							//lastMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
 							lastMonth.add(getActivityInfo(lruninfo.run_id_v));
 						}
@@ -267,7 +267,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 					}
 				}
 			} else {
-				writeLog(String.format("filteredActivityInfoMap: ckey:%d: missing", ckey));
+				writeLog(String.format(Locale.US, "filteredActivityInfoMap: ckey:%d: missing", ckey));
 			}
 		}
 		listDataChild.put(listDataHeader.get(0), thisMonth); // Header, Child data
@@ -298,7 +298,6 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	@Override
 	public void onStop() {
 		super.onStop();
-
 		// ATTENTION: This was auto-generated to implement the App Indexing API.
 		// See https://g.co/AppIndexing/AndroidStudio for more information.
 		Action viewAction = Action.newAction(
@@ -319,7 +318,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 		Intent i = new Intent(Intent.ACTION_SEND);
 		i.setType("message/rfc822");
-		i.putExtra(Intent.EXTRA_EMAIL  , new String[]{"admin@runtracer.com"});
+		i.putExtra(Intent.EXTRA_EMAIL, new String[]{"admin@runtracer.com"});
 		i.putExtra(Intent.EXTRA_SUBJECT, "Suggestion");
 		i.putExtra(Intent.EXTRA_TEXT, "");
 		try {
@@ -327,7 +326,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		} catch (android.content.ActivityNotFoundException ex) {
 			Toast.makeText(ActivitiesActivity.this, "There are no email clients installed.", Toast.LENGTH_SHORT).show();
 		}
-		return(0);
+		return (0);
 	}
 
 	public void showRunChart() {
@@ -344,12 +343,11 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	 */
 	@Override
 	public void onClick(View v) {
-
 		switch (v.getId()) {
 			case R.id.fab_show_chart:
 				Snackbar.make(v, "Showing the chart for selected activity now.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 				showRunChart();
-			break;
+				break;
 
 			case R.id.fab:
 				sendEmail();
@@ -361,12 +359,16 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	public class WebAppInterface {
 		Context mContext;
 
-		/** Instantiate the interface and set the context */
+		/**
+		 * Instantiate the interface and set the context
+		 */
 		WebAppInterface(Context c) {
 			mContext = c;
 		}
 
-		/** Show a toast from the web page */
+		/**
+		 * Show a toast from the web page
+		 */
 		@JavascriptInterface
 		public void showToast(String toast) {
 			Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();

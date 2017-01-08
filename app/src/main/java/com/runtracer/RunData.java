@@ -1,6 +1,7 @@
 package com.runtracer;
 
 import android.util.Base64;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,7 +30,7 @@ import java.util.regex.Pattern;
 
 public class RunData implements Serializable {
 	private static final long serialVersionUID = 100L;
-	private static final String TAG = "run_data";
+	private static final String TAG = "rundata";
 	private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
 	public String run_date_start;
 	public String run_date_end;
@@ -165,7 +166,7 @@ public class RunData implements Serializable {
 		SimpleDateFormat datef1= new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 		Date datenow= new Date();
 		String date= datef1.format(datenow);
-		//Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
 	public RunData() throws JSONException {
@@ -244,6 +245,7 @@ public class RunData implements Serializable {
 	}
 
 	boolean checkRunData() throws ParseException, NoSuchAlgorithmException, JSONException, IOException {
+		writeLog("checkRunData()...");
 		boolean check= false;
 		String md5sum_calculated= this.runtrace_md5sum;
 		String md5sum_received;
@@ -258,6 +260,7 @@ public class RunData implements Serializable {
 	}
 
 	JSONObject createJSON () throws JSONException, IOException, NoSuchAlgorithmException, ParseException {
+		writeLog("createJSON ()...");
 		NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
 		DecimalFormat df = (DecimalFormat)nf;
 		JSONObject jsonRunData= new JSONObject("{\"key\":\"data\"}");

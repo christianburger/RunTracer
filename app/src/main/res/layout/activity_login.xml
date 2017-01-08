@@ -65,8 +65,6 @@
 				android:layout_height="28sp"
 				android:hint="@string/prompt_password"
 				android:inputType="textPassword"
-				android:imeActionId="@+id/login"
-				android:imeActionLabel="@string/action_sign_in_short"
 				android:imeOptions="actionUnspecified"
 				android:maxLines="1"
 				android:singleLine="true"

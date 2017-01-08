@@ -52,11 +52,7 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -421,7 +417,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			run_data.getValues();
 			String json_run_data = run_data.createJSON().toString();
 			JSONObject json_run = new JSONObject(json_run_data);
-			MainActivity.dbExchange.url = new URL("https://www.runtracer.com/select.php");
+			MainActivity.dbExchange.url = new URL("http://www.runtracer.com/select.php");
 			MainActivity.dbExchange.command = "send_run_data";
 			MainActivity.dbExchange.full_name = user_bio.full_name;
 			MainActivity.dbExchange.accountEmail = user_bio.email;
@@ -1179,7 +1175,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new Date()).toString());
-		//Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
 	/**

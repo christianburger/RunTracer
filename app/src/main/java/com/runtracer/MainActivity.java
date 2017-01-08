@@ -31,6 +31,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.text.format.DateFormat;
 import android.text.method.LinkMovementMethod;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -89,8 +90,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private static final boolean DEVELOPER_MODE= false;
 
+	public static final int minimum_age = 13;
+
 	public static final int MAX_AVAILABLE= 1;
 	private static final int MAX_ATTEMPTS = 10;
+
+	private static final String TAG = "runtracer";
 
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 
@@ -237,8 +242,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 		// [START create_google_api_client]
 		// Build GoogleApiClient with access to basic profile
-		// ATTENTION: This "addApi(AppIndex.API)"was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
 		mGoogleApiClient = new Builder(this)
 			.addConnectionCallbacks(this)
 			.addOnConnectionFailedListener(this)
@@ -272,25 +275,25 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			f_out = new FileOutputStream(userdatafile.getAbsolutePath(), false);
 			ObjectOutputStream obj_out = new ObjectOutputStream(f_out);
 			obj_out.writeObject(user_bio);
-			writeLog(String.format("saved file: %s", userdatafile.getAbsolutePath()));
+			writeLog(String.format(Locale.US, "saved file: %s", userdatafile.getAbsolutePath()));
 			f_out.close();
 
 			runmapfile = new File(path, "runmap.data");
 			f_out = new FileOutputStream(runmapfile.getAbsolutePath(), false);
 			ObjectOutputStream objmap_out = new ObjectOutputStream(f_out);
 			objmap_out.writeObject(activityListMap);
-			writeLog(String.format("saved file: %s", runmapfile.getAbsolutePath()));
+			writeLog(String.format(Locale.US, "saved file: %s", runmapfile.getAbsolutePath()));
 			f_out.close();
 
 			runinfofile = new File(path, "runinfo.data");
 			f_out = new FileOutputStream(runinfofile.getAbsolutePath(), false);
 			ObjectOutputStream objinfo_out = new ObjectOutputStream(f_out);
 			objinfo_out.writeObject(activityInfoMap);
-			writeLog(String.format("saved file: %s", runinfofile.getAbsolutePath()));
+			writeLog(String.format(Locale.US, "saved file: %s", runinfofile.getAbsolutePath()));
 			f_out.close();
 
 		} catch (IOException | PackageManager.NameNotFoundException e) {
-			writeLog(String.format("writeFile(): Exception: %s", e.toString()));
+			writeLog(String.format(Locale.US, "writeFile(): Exception: %s", e.toString()));
 			e.printStackTrace();
 		}
 
@@ -312,16 +315,16 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				// Read an object
 				writeLog("File found, reading data now: ");
 				user_bio= (UserData) obj_in.readObject();
-				writeLog(String.format("00 tmp.full_name: %s", user_bio.full_name));
-				writeLog(String.format("00 tmp.email: %s", user_bio.email));
-				writeLog(String.format("00 tmp.bMetricSystem: %b", user_bio.bMetricSystem));
+				writeLog(String.format(Locale.US, "00 tmp.full_name: %s", user_bio.full_name));
+				writeLog(String.format(Locale.US, "00 tmp.email: %s", user_bio.email));
+				writeLog(String.format(Locale.US, "00 tmp.bMetricSystem: %b", user_bio.bMetricSystem));
 				user_bio.getValues();
-				writeLog(String.format("01 tmp.full_name: %s", user_bio.full_name));
-				writeLog(String.format("01 tmp.email: %s", user_bio.email));
-				writeLog(String.format("01 tmp.bMetricSystem: %b", user_bio.bMetricSystem));
-				writeLog(String.format("01 tmp.created: %s", user_bio.created));
-				writeLog(String.format("01 tmp.created_at: %s", user_bio.created_at));
-				writeLog(String.format("01 tmp.created_v: %s", user_bio.created_v.toString()));
+				writeLog(String.format(Locale.US, "01 tmp.full_name: %s", user_bio.full_name));
+				writeLog(String.format(Locale.US, "01 tmp.email: %s", user_bio.email));
+				writeLog(String.format(Locale.US, "01 tmp.bMetricSystem: %b", user_bio.bMetricSystem));
+				writeLog(String.format(Locale.US, "01 tmp.created: %s", user_bio.created));
+				writeLog(String.format(Locale.US, "01 tmp.created_at: %s", user_bio.created_at));
+				writeLog(String.format(Locale.US, "01 tmp.created_v: %s", user_bio.created_v.toString()));
 				mMetricSystem.setChecked(user_bio.bMetricSystem);
 				userdata_ok= true;
 				f_in.close();
@@ -365,8 +368,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (userdata_ok && runmapdata_ok && runinfodata_ok) {
 			int mapsz=activityListMap.size();
 			int infosz=activityInfoMap.size();
-			writeLog(String.format("readFile: checking basic file consistency: mapsz: %d, infosz: %d", mapsz, infosz));
+			writeLog(String.format(Locale.US,"readFile: checking basic file consistency: mapsz: %d, infosz: %d", mapsz, infosz));
 			if (mapsz>0 && infosz>0 && mapsz == infosz) {
+				writeLog("readFile(): isUpdated being set to true.");
 				isUpdated= true;
 			}
 		}
@@ -469,7 +473,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (userInfo.isNull("metric")) {
 			userInfo.accumulate("metric", user_bio.bMetricSystem?1:0);
 		}
-		writeLog(String.format("userInfo: %s", userInfo.toString()));
+		writeLog(String.format(Locale.US, "userInfo: %s", userInfo.toString()));
 		Intent intent = new Intent(this, NewUserActivity.class);
 		intent.putExtra("user_info", userInfo.toString());
 		startActivityForResult(intent, NEW_USER_DATA);
@@ -588,7 +592,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		mUserTargetFat = (TextView) findViewById(R.id.goal_fat_value);
 
 		TextView mLink = (TextView) findViewById(R.id.runtracer_web_page);
-		String linkText = "Visit the <a href='https://runtracer.com'>RunTracer</a> web page.";
+		String linkText = "Visit the <a href='http://runtracer.com'>RunTracer</a> web page.";
 		mLink.setText(Html.fromHtml(linkText));
 		mLink.setMovementMethod(LinkMovementMethod.getInstance());
 	}
@@ -665,7 +669,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 		mBodyMassIndex.setText(printValue(user_bio.bmi));
 		mBodyAdiposityIndex.setText(printValue(user_bio.bai));
-		int minimum_age = 10;
 		if (user_bio.age > minimum_age) {
 			user_bio.getValues();
 			mUserMaxHR.setText(printValue(user_bio.maximum_hr));
@@ -760,7 +763,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			available.acquire();
 			dbExchange.clear();
 
-			dbExchange.url = new URL("https://www.runtracer.com/select.php");
+			dbExchange.url = new URL("http://www.runtracer.com/select.php");
 			dbExchange.command = "auth_user";
 			dbExchange.accountEmail = (String) jsonUserData.get("email");
 			dbExchange.full_name = (String) jsonUserData.get("full_name");
@@ -784,7 +787,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (isServerReady()) {
 			available.acquire();
 			dbExchange.clear();
-			dbExchange.url = new URL("https://www.runtracer.com/select.php");
+			dbExchange.url = new URL("http://www.runtracer.com/select.php");
 			dbExchange.command = "send_user_data";
 			dbExchange.json_data_in.accumulate("command", dbExchange.command);
 			dbExchange.json_data_in.accumulate("full_name", jsonUserData.get("full_name"));
@@ -813,7 +816,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (isServerReady() && (mIsSignedIn || mIsEmailSignedIn) ) {
 			available.acquire();
 			dbExchange.clear();
-			dbExchange.url = new URL("https://www.runtracer.com/select.php");
+			dbExchange.url = new URL("http://www.runtracer.com/select.php");
 			dbExchange.command = "change_user_data";
 			dbExchange.json_data_in.accumulate("command", dbExchange.command);
 			dbExchange.json_data_in.accumulate("full_name", jsonUserData.get("full_name"));
@@ -846,7 +849,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (isServerReady() && (mIsSignedIn || mIsEmailSignedIn) ) {
 			available.acquire();
 			dbExchange.clear();
-			dbExchange.url = new URL("https://www.runtracer.com/select.php");
+			dbExchange.url = new URL("http://www.runtracer.com/select.php");
 			dbExchange.command = "get_run_info";
 			Date dnow = new Date();
 			dbExchange.json_data_in.accumulate("command", dbExchange.command);
@@ -862,7 +865,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (nowtime > timeatimeout) {
 					activityListMap.put(run_id, dnow.getTime());
 					for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-						writeLog(String.format("getRunInfo: attempt: %d", attempts));
+						writeLog(String.format(Locale.US,"getRunInfo: attempt: %d", attempts));
 						dataok = sendServerDataServiceRequest(hash);
 					}
 				}
@@ -881,7 +884,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady() ) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.url = new URL("https://www.runtracer.com/select.php");
+				dbExchange.url = new URL("http://www.runtracer.com/select.php");
 				dbExchange.command = "get_all_run_info";
 				dbExchange.json_data_in.accumulate("command", dbExchange.command);
 				dbExchange.json_data_in.accumulate("uid", user_bio.uid);
@@ -889,6 +892,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				String hash = dbExchange.getHash();
 				available.release();
 				sendServerDataServiceRequest(hash);
+				writeLog("getAllRunInfo...");
 			}
 		}
 		return 0;
@@ -950,8 +954,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 		if (requestCode == RC_SIGN_IN) {
+			writeLog(String.format(Locale.US, "onActivityResult: requestCode= %d, RC_SIGN_IN= %d", requestCode, RC_SIGN_IN));
+			writeLog(String.format(Locale.US, "onActivityResult: Intent data: %s", data!=null?data.toString():"yep, it's actually null"));
 			mIsResolving = false;
 			if (!mGoogleApiClient.isConnected()) {
+				writeLog(String.format(Locale.US, "onActivityResult: mGoogleApiClient.isConnected(): %b \tmGoogleApiClient.reconnect(); ...", mGoogleApiClient.isConnected()));
 				mGoogleApiClient.reconnect();
 			}
 		}
@@ -1073,12 +1080,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public void onConnected(Bundle bundle) {
 		String accountEmail="";
 		String name="";
+		writeLog(String.format(Locale.US, "onConnected: bundle: %s", (bundle!=null)?bundle.toString():""  ));
 		// onConnected indicates that an account was selected on the device, that the selected
 		// account has granted any requested permissions to our app and that we were able to
 		// establish a service connection to Google Play services.
 		if (Plus.PeopleApi.getCurrentPerson(mGoogleApiClient) != null) {
 			accountEmail = Plus.AccountApi.getAccountName(mGoogleApiClient);
 			name = Plus.PeopleApi.getCurrentPerson(mGoogleApiClient).getDisplayName();
+			writeLog(String.format(Locale.US, "onConnected: name: %s", name));
+			writeLog(String.format(Locale.US, "onConnected: accountEmail: %s", accountEmail));
 		}
 		try {
 			JSONObject jsonData = new JSONObject("{\"key\":\"data\"}");
@@ -1217,7 +1227,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_resting_hr_button:
-				writeLog(String.format("clicked button: user_resting_hr_button: user_bio.rhr_state: %d", user_bio.rhr_state ));
+				writeLog(String.format(Locale.US,"clicked button: user_resting_hr_button: user_bio.rhr_state: %d", user_bio.rhr_state ));
 				if (user_bio.rhr_state == MEASURING) {
 					user_bio.rhr_state= READY;
 				} else {
@@ -1278,8 +1288,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public void writeLog(String msg) {
 		Date cdate;
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate= new Date()).toString());
-		String msg2= String.format("<%d>", cdate.getTime());
-		//Log.e(TAG, date + msg2 + ": "  + msg);
+		String msg2= String.format(Locale.US, "<%d>", cdate.getTime());
+		Log.e(TAG, date + msg2 + ": "  + msg);
 	}
 
 	@Override
@@ -1311,7 +1321,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	// on the UI.
 	private void displayGattServices(List<BluetoothGattService> gattServices) {
 		if (gattServices == null) return;
-		String uuid = null;
+		String uuid;
 		String unknownServiceString = getResources().getString(R.string.unknown_service);
 		String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
 		ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
@@ -1385,6 +1395,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		public void onReceive(Context context, Intent intent) {
 			String response;
 			response= intent.getStringExtra("param_out_msg");
+			writeLog("Hey: ResponseReceiver: in: " + dbExchange.json_data_in);
+			writeLog("Hey: ResponseReceiver: out: " + dbExchange.json_data_out);
+
 			if (response.compareTo(lastHash) == 0) {
 				dbExchange.pending= false;
 			}
@@ -1399,14 +1412,19 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			boolean update_result= false;
 			RunData run_info= new RunData();
 			Date dnow= new Date();
+			writeLog(String.format(Locale.US,"updateRunInfo: run_id: %d", run_id));
+
 			if(activityListMap.containsKey(run_id)) {
 				if(dnow.getTime()>=(long)activityListMap.get(run_id)) {
 					if(!activityInfoMap.containsKey(run_id)) {
 						if (!json_run_info.isNull("calories_distance")) {
+							writeLog(String.format("updateRunInfo: adding calories_distance: %s ", json_run_info.get("calories_distance")));
 							run_info.writeJSON(json_run_info);
 							activityInfoMap.put(run_id, run_info);
 							activityListMap.put(run_id, dnow.getTime() * 2); //unix time now x 2
+							writeLog(String.format(Locale.US,"updateRunInfo: 01: total_runs: %d ", user_bio.total_runs));
 							user_bio.total_runs= activityInfoMap.size();
+							writeLog(String.format(Locale.US,"updateRunInfo: 02: total_runs: %d ", user_bio.total_runs));
 							user_bio.getValues();
 							update_result= true;
 						}
@@ -1430,11 +1448,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			user_bio.total_distance_km= 0;
 			user_bio.total_distance_miles=0;
 			user_bio.total_calories= 0;
+			writeLog("updateAllRunInfo(JSONObject json_all_run_info): isUpdated being set to true.");
 			isUpdated= true;
 			for (rowidx=0; !eof ; rowidx++) {
 				json_run_info= new JSONObject("{\"key\":\"data\"}");
 				for (colidx=0; colidx<(RunData.colsz+1); colidx ++) {
-					String key=String.format("(%d:%d)", colidx, rowidx);
+					String key=String.format(Locale.US,"(%d:%d)", colidx, rowidx);
 					if (!json_all_run_info.isNull(key)) {
 						String newkey= crun.getKeyName(colidx);
 						json_run_info.accumulate(newkey, json_all_run_info.get(key));
@@ -1449,6 +1468,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					Date dnow= new Date();
 					activityListMap.put(run_id, dnow.getTime());
 					isUpdated= !updateRunInfo(run_id, json_run_info);
+					writeLog(String.format(Locale.US, "updateAllRunInfo: runid: %d received and updated.", run_id));
 				}
 			}
 			return 0;
@@ -1538,6 +1558,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						try {
 							user_bio.writeJSON(dbEx.json_data_out);
 							mMetricSystem.setChecked(user_bio.bMetricSystem);
+							writeLog(String.format(Locale.US, "processResponse: auth_user: %s", user_bio.email));
+							writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
 							getRunData(!isUpdated);
 							updateUI();
 
@@ -1563,7 +1585,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 								jsonData.accumulate("target_fat", user_bio.target_fat);
 								jsonData.accumulate("fat_percentage", user_bio.current_fat);
 								jsonData.accumulate("metric", user_bio.bMetricSystem?1:0);
-								writeLog(String.format("jsonData: %s", jsonData.toString()));
+								writeLog(String.format(Locale.US, "jsonData: %s", jsonData.toString()));
 								newUser(jsonData);
 							} catch (JSONException e) {
 								e.printStackTrace();
@@ -1633,7 +1655,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			} else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
 				mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
 				mMeasureRHR.setEnabled(false);
-				writeLog(String.format("hr data... \nuser_bio.hr_reading: %d \nuser_bio.current_hr: %f \nuser_bio.last_hr: %f", user_bio.hr_reading, user_bio.current_hr, user_bio.last_hr));
+				writeLog(String.format(Locale.US, "hr data... \nuser_bio.hr_reading: %d \nuser_bio.current_hr: %f \nuser_bio.last_hr: %f", user_bio.hr_reading, user_bio.current_hr, user_bio.last_hr));
 			} else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
 				// Show all the supported services and characteristics on the user interface.
 				displayGattServices(mBluetoothLeService.getSupportedGattServices());
@@ -1663,7 +1685,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					}
 				}
 				if (user_bio.rhr_state== MEASURING) {
-					mMeasureRHR.setText(String.format("OK? (%.0f)", user_bio.current_hr));
+					mMeasureRHR.setText(String.format(Locale.getDefault(), "OK? (%.0f)", user_bio.current_hr));
 				} else {
 					mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
 				}

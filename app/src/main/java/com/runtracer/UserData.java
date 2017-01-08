@@ -1,7 +1,5 @@
 package com.runtracer;
 
-import android.util.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -331,7 +329,7 @@ public class UserData implements Serializable {
 		int returnval=0;
 		if (! jsonuserdata.isNull("uid_v")) {
 			this.uid_v= jsonuserdata.getInt("uid_v");
-			writeLog(String.format("UserData: writeJSON: received: this.uid_v: %d", this.uid_v));
+			writeLog(String.format(Locale.US, "UserData: writeJSON: received: this.uid_v: %d", this.uid_v));
 		} else {
 			returnval= -1;
 		}

@@ -6,8 +6,12 @@ import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class DataBaseExchange implements Serializable, Cloneable {
+class DataBaseExchange implements Serializable, Cloneable {
 	private static final long serialVersionUID = 100L;
+
+	public static long getSerialVersionUID() {
+		return serialVersionUID;
+	}
 
 	URL url;
 	String command = "";
@@ -18,8 +22,8 @@ public class DataBaseExchange implements Serializable, Cloneable {
 	JSONObject json_data_in = new JSONObject();
 	JSONObject json_data_out = new JSONObject();
 
-	public int error_no=0;
-	public boolean pending= false;
+	int error_no=0;
+	boolean pending= false;
 
 	/**
 	 * Creates and returns a copy of this {@code Object}. The default
@@ -40,7 +44,7 @@ public class DataBaseExchange implements Serializable, Cloneable {
 		return super.clone();
 	}
 
-	protected String getHash() {
+	String getHash() {
 		String hash= null;
 		try {
 			hash = this.clone().toString();
@@ -53,11 +57,131 @@ public class DataBaseExchange implements Serializable, Cloneable {
 		return (this.hash);
 	}
 
-	public static DataBaseExchange createDataBaseExchange() {
+	private DataBaseExchange() {
+	}
+
+	public DataBaseExchange(URL url, String command, String accountEmail, String full_name, String hash, JSONObject json_data_in, JSONObject json_data_out, int error_no, boolean pending) {
+		this.url = url;
+		this.command = command;
+		this.accountEmail = accountEmail;
+		this.full_name = full_name;
+		this.hash = hash;
+		this.json_data_in = json_data_in;
+		this.json_data_out = json_data_out;
+		this.error_no = error_no;
+		this.pending = pending;
+	}
+
+	private URL getUrl() {
+		return url;
+	}
+
+	public void setUrl(URL url) {
+		this.url = url;
+	}
+
+	private String getCommand() {
+		return command;
+	}
+
+	public void setCommand(String command) {
+		this.command = command;
+	}
+
+	private String getAccountEmail() {
+		return accountEmail;
+	}
+
+	public void setAccountEmail(String accountEmail) {
+		this.accountEmail = accountEmail;
+	}
+
+	public String getFull_name() {
+		return full_name;
+	}
+
+	public void setFull_name(String full_name) {
+		this.full_name = full_name;
+	}
+
+	public void setHash(String hash) {
+		this.hash = hash;
+	}
+
+	private JSONObject getJson_data_in() {
+		return json_data_in;
+	}
+
+	public void setJson_data_in(JSONObject json_data_in) {
+		this.json_data_in = json_data_in;
+	}
+
+	private JSONObject getJson_data_out() {
+		return json_data_out;
+	}
+
+	public void setJson_data_out(JSONObject json_data_out) {
+		this.json_data_out = json_data_out;
+	}
+
+	private int getError_no() {
+		return error_no;
+	}
+
+	public void setError_no(int error_no) {
+		this.error_no = error_no;
+	}
+
+	private boolean isPending() {
+		return pending;
+	}
+
+	public void setPending(boolean pending) {
+		this.pending = pending;
+	}
+
+	static DataBaseExchange createDataBaseExchange() {
 		return new DataBaseExchange();
 	}
 
-	public void clear() {
+	@Override
+	public String toString() {
+		return "DataBaseExchange{" +
+			"url=" + url +
+			", command='" + command + '\'' +
+			", accountEmail='" + accountEmail + '\'' +
+			", full_name='" + full_name + '\'' +
+			", hash='" + hash + '\'' +
+			", json_data_in=" + json_data_in +
+			", json_data_out=" + json_data_out +
+			", error_no=" + error_no +
+			", pending=" + pending +
+			'}';
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof DataBaseExchange)) return false;
+		DataBaseExchange that = (DataBaseExchange) o;
+		return getError_no() == that.getError_no() && isPending() == that.isPending() && getUrl().equals(that.getUrl()) && getCommand().equals(that.getCommand()) && getAccountEmail().equals(that.getAccountEmail()) && getFull_name().equals(that.getFull_name()) && getHash().equals(that.getHash()) && getJson_data_in().equals(that.getJson_data_in()) && getJson_data_out().equals(that.getJson_data_out());
+	}
+
+	@Override
+	public int hashCode() {
+		int result = getUrl().hashCode();
+		result = 31 * result + getCommand().hashCode();
+		result = 31 * result + getAccountEmail().hashCode();
+		result = 31 * result + getFull_name().hashCode();
+		result = 31 * result + getHash().hashCode();
+		result = 31 * result + getJson_data_in().hashCode();
+		result = 31 * result + getJson_data_out().hashCode();
+		result = 31 * result + getError_no();
+		result = 31 * result + (isPending() ? 1 : 0);
+		return result;
+	}
+
+	void clear() {
 		try {
 			url= new URL("https://www.runtrace.com");
 			command = "empty";

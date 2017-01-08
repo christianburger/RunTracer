@@ -4,9 +4,10 @@ import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.DialogFragment;
-import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.format.DateFormat;
 import android.util.Log;
@@ -27,17 +28,24 @@ import org.json.JSONObject;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static android.view.View.*;
+import static android.view.View.OnClickListener;
+import static android.view.View.OnTouchListener;
 
 public class NewUserActivity extends AppCompatActivity implements OnClickListener, OnTouchListener, TextView.OnEditorActionListener {
 
 	private final NumberFormat nf = NumberFormat.getNumberInstance(Locale.getDefault());
-	public static String datePicked="";
+
+	private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
+	private static final SimpleDateFormat local_format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.getDefault());
+
+	public static String datePicked = "";
 	private static final String TAG = "runtracer";
 	protected static JSONObject userData;
 
@@ -74,14 +82,16 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	String retrievedFat;
 	String retrievedTargetFat;
 
-	private final double conv_in_cm= 2.54;
-	private final double conv_ft_cm= 30.48;
-	private final double conv_lb_kg= 0.45359237;
+	private final double conv_in_cm = 2.54;
+	private final double conv_ft_cm = 30.48;
+	private final double conv_lb_kg = 0.45359237;
 
 	double retrievedHeight_v;
 	double retrievedHipCircumference_v;
 	double retrievedWeight_v;
 	double retrievedTargetWeight_v;
+
+	Date retrievedDateOfBirth;
 
 	private boolean retrievedMetricSystem;
 
@@ -94,46 +104,46 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		super.onCreate(savedInstanceState);
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 
-		retrievedFullName= "";
-		retrievedEmail= "";
-		retrievedGender= "";
-		retrievedDOB= "";
-		retrievedHeight= "0";
-		retrievedHipCircumference= "0";
-		retrievedWeight= "0";
-		retrievedTargetWeight= "0";
-		retrievedFat= "0";
-		retrievedTargetFat= "0";
+		retrievedFullName = "";
+		retrievedEmail = "";
+		retrievedGender = "";
+		retrievedDOB = "";
+		retrievedHeight = "0";
+		retrievedHipCircumference = "0";
+		retrievedWeight = "0";
+		retrievedTargetWeight = "0";
+		retrievedFat = "0";
+		retrievedTargetFat = "0";
 
-		retrievedHeight_v= -1;
-		retrievedHipCircumference_v= -1;
-		retrievedWeight_v= -1;
-		retrievedTargetWeight_v= -1;
+		retrievedHeight_v = -1;
+		retrievedHipCircumference_v = -1;
+		retrievedWeight_v = -1;
+		retrievedTargetWeight_v = -1;
 
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
 			String value = extras.getString("user_info");
 			try {
-				userData= new JSONObject(value);
+				userData = new JSONObject(value);
 				writeLog(String.format("json received: %s", userData));
 				if (!userData.isNull("full_name")) {
-					retrievedFullName=userData.getString("full_name");
+					retrievedFullName = userData.getString("full_name");
 				} else {
-					retrievedFullName="";
+					retrievedFullName = "";
 				}
 				if (!userData.isNull("email")) {
-					retrievedEmail=userData.getString("email");
+					retrievedEmail = userData.getString("email");
 				} else {
-					retrievedEmail="";
+					retrievedEmail = "";
 				}
 				if (!userData.isNull("metric")) {
-					retrievedMetricSystem= (userData.getInt("metric")==1);
+					retrievedMetricSystem = (userData.getInt("metric") == 1);
 				}
-				if ( retrievedFullName.compareTo("empty")  == 0 ) {
-					retrievedFullName="";
+				if (retrievedFullName.compareTo("empty") == 0) {
+					retrievedFullName = "";
 				}
-				if ( retrievedEmail.compareTo("empty")  == 0 ) {
-					retrievedEmail="";
+				if (retrievedEmail.compareTo("empty") == 0) {
+					retrievedEmail = "";
 				}
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -147,36 +157,36 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		Context context = this.getApplicationContext();
 
 		// Set up button click listeners
-		mNewUser= (Button) findViewById(R.id.sign_in_button);
+		mNewUser = (Button) findViewById(R.id.sign_in_button);
 		findViewById(R.id.sign_up_button).setOnClickListener(this);
 		findViewById(R.id.sign_up_button).setEnabled(true);
 		findViewById(R.id.sign_up_button).setVisibility(Button.VISIBLE);
 
 		// Set up view instances
-		mFullName= (EditText) findViewById(R.id.full_name);
+		mFullName = (EditText) findViewById(R.id.full_name);
 		mUserEmail = (EditText) findViewById(R.id.email);
-		mUserDateofBirth= (Button) findViewById(R.id.date_picker_button);
-		mUserGender= (Switch) findViewById(R.id.user_gender_value);
+		mUserDateofBirth = (Button) findViewById(R.id.date_picker_button);
+		mUserGender = (Switch) findViewById(R.id.user_gender_value);
 		mUserGender.setOnClickListener(this);
-		mUserHeight= (EditText) findViewById(R.id.user_height);
+		mUserHeight = (EditText) findViewById(R.id.user_height);
 
-		mUserHeightUnits= (TextView) findViewById(R.id.height_units);
-		mUserWeightUnits= (TextView) findViewById(R.id.weight_units);
-		mUserWeightTargetUnits= (TextView) findViewById(R.id.weight_unit_target);
-		mUserHipCircumferenceUnits= (TextView) findViewById(R.id.length_units);
+		mUserHeightUnits = (TextView) findViewById(R.id.height_units);
+		mUserWeightUnits = (TextView) findViewById(R.id.weight_units);
+		mUserWeightTargetUnits = (TextView) findViewById(R.id.weight_unit_target);
+		mUserHipCircumferenceUnits = (TextView) findViewById(R.id.length_units);
 
-		mUserHipCircumference= (EditText) findViewById(R.id.hip_circunference_value);
-		mUserWeight= (EditText) findViewById(R.id.user_weight);
-		mUserTargetWeight= (EditText) findViewById(R.id.user_weight_target);
+		mUserHipCircumference = (EditText) findViewById(R.id.hip_circunference_value);
+		mUserWeight = (EditText) findViewById(R.id.user_weight);
+		mUserTargetWeight = (EditText) findViewById(R.id.user_weight_target);
 
-		mUserBodyMassIndex= (EditText) findViewById(R.id.user_bmi_value);
-		mUserBodyAdiposityIndex= (EditText) findViewById(R.id.user_bai_value);
+		mUserBodyMassIndex = (EditText) findViewById(R.id.user_bmi_value);
+		mUserBodyAdiposityIndex = (EditText) findViewById(R.id.user_bai_value);
 
 		mUserBodyMassIndex.setEnabled(false);
 		mUserBodyAdiposityIndex.setEnabled(false);
 
-		mUserFat= (EditText) findViewById(R.id.user_fat_percentage);
-		mUserTargetFat= (EditText) findViewById(R.id.user_fat_percentage_target);
+		mUserFat = (EditText) findViewById(R.id.user_fat_percentage);
+		mUserTargetFat = (EditText) findViewById(R.id.user_fat_percentage_target);
 		mUserDateofBirth.setOnClickListener(this);
 		mUserDateofBirth.setOnTouchListener(this);
 		mUserDateofBirth.setOnEditorActionListener(this);
@@ -217,7 +227,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	public boolean isNumber(String str) {
 		int size = str.length();
 		for (int i = 0; i < size; i++) {
-			Character cchar= new Character(str.charAt(i));
+			Character cchar = new Character(str.charAt(i));
 			if (!Character.isDigit(cchar) && (cchar != '.') && (cchar != ',')) {
 				return false;
 			}
@@ -228,7 +238,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	boolean calculateBMI() throws ParseException {
 		boolean result;
 		getValues(false);
-		if (retrievedHeight_v > 0 && retrievedHipCircumference_v > 0 && retrievedWeight_v >0) {
+		if (retrievedHeight_v > 0 && retrievedHipCircumference_v > 0 && retrievedWeight_v > 0) {
 			// Metric: (HC / (HM)1.5) - 18
 			// BAI = Body Adiposity Index
 			this.bai = retrievedHipCircumference_v / Math.pow(retrievedHeight_v / 100, 1.5) - 18;
@@ -237,7 +247,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 			this.bmi = retrievedWeight_v / Math.pow(retrievedHeight_v / 100, 2);
 			result = true;
 		} else {
-			result=false;
+			result = false;
 		}
 		return result;
 	}
@@ -246,7 +256,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	public boolean onTouch(View v, MotionEvent event) {
 		mUserDateofBirth.setText(datePicked);
 		try {
-			if ( calculateBMI() ) {
+			if (calculateBMI()) {
 				mUserBodyMassIndex.setText(String.format("%.2f", this.bmi));
 				mUserBodyAdiposityIndex.setText(String.format("%.2f", this.bai));
 			}
@@ -266,6 +276,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	public static class DatePickerFragment extends DialogFragment
 		implements DatePickerDialog.OnDateSetListener {
 
+		@NonNull
 		@Override
 		public Dialog onCreateDialog(Bundle savedInstanceState) {
 			// Use the current date as the default date in the picker
@@ -279,20 +290,24 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		}
 
 		public void onDateSet(DatePicker view, int year, int month, int day) {
-			datePicked= String.format("%d-%d-%d ", year, month + 1, day );
+			datePicked = String.format(Locale.US, "%d-%d-%d ", year, month + 1, day);
 		}
 
 		public void writeLog(String msg) {
 			String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-			//Log.e(TAG, date + ": " + msg);
+			Log.e(TAG, date + ": " + msg);
 		}
 	}
 
-	public void showDatePickerDialog(View v) {
+	public void showDatePickerDialog(View v) throws ParseException {
 		//DialogFragment newFragment = new DatePickerFragment();
 		DatePickerFragment newFragment = new DatePickerFragment();
 		newFragment.show(getSupportFragmentManager(), "datePicker");
-		retrievedDOB= datePicked;
+		retrievedDOB = datePicked;
+
+		SimpleDateFormat l_format = new SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault());
+		retrievedDateOfBirth= l_format.parse(datePicked);
+
 		mUserDateofBirth.setText(datePicked);
 	}
 
@@ -317,14 +332,13 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		return super.onOptionsItemSelected(item);
 	}
 
-	public boolean isEmailValid(String email)
-	{
+	public boolean isEmailValid(String email) {
 		String regExpn = "^(([\\w-]+\\.)+[\\w-]+|([a-zA-Z]{1}|[\\w-]{2,}))@"
-			+"((([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
-			+"[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\."
-			+"([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
+			+ "((([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
+			+ "[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\."
+			+ "([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
 			+ "[0-9]{1,2}|25[0-5]|2[0-4][0-9])){1}|"
-			+"([a-zA-Z]+[\\w-]+\\.)+[a-zA-Z]{2,4})$";
+			+ "([a-zA-Z]+[\\w-]+\\.)+[a-zA-Z]{2,4})$";
 
 		Pattern pattern = Pattern.compile(regExpn, Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(email);
@@ -332,12 +346,32 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		return matcher.matches();
 	}
 
+	private boolean isAgeValid() {
+
+		Date dateOfBirth = retrievedDateOfBirth;
+		Date dateOfToday= new Date();
+
+		int age_v;
+		Calendar calendar = Calendar.getInstance();
+		Calendar today= Calendar.getInstance();
+		calendar.setTime(dateOfBirth);
+		today.setTime(dateOfToday);
+		age_v= calendar.compareTo(today);
+
+		writeLog(String.format(Locale.US,"retrievedDateOfBirth: %s", retrievedDateOfBirth.toString()));
+		writeLog(String.format(Locale.US,"dateOfToday: %s", dateOfToday.toString()));
+		writeLog(String.format(Locale.US,"dateOfBirth: %s", dateOfBirth.toString()));
+		writeLog(String.format(Locale.US,"age: %d", age_v));
+
+		return age_v > 13;
+	}
+
 	private boolean isNameValid(String name) {
 		return name.length() > 4;
 	}
 
 	private boolean isWeightValid(String weight) throws ParseException {
-		double weight_v= 0.0;
+		double weight_v = 0.0;
 		if (isNumber(weight)) {
 			weight_v = nf.parse(weight).doubleValue();
 		}
@@ -349,7 +383,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	}
 
 	private boolean isFatValid(String fat) throws ParseException {
-		double fat_v= 0.0;
+		double fat_v = 0.0;
 		if (isNumber(fat)) {
 			fat_v = nf.parse(fat).doubleValue();
 		}
@@ -357,7 +391,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	}
 
 	private boolean isHeightValid(String height) throws ParseException {
-		double height_v= 0.0;
+		double height_v = 0.0;
 		if (isNumber(height)) {
 			height_v = nf.parse(height).doubleValue();
 		}
@@ -369,7 +403,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	}
 
 	private boolean isHipCircumferenceValid(String hip_circumference) throws ParseException {
-		double hip_circumference_v= 0.0;
+		double hip_circumference_v = 0.0;
 		if (isNumber(hip_circumference)) {
 			hip_circumference_v = nf.parse(hip_circumference).doubleValue();
 		}
@@ -382,28 +416,30 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 
 	public boolean getValues(boolean bFillJSON) throws ParseException {
 
-		double lretrievedHeight_v =-1;
-		double lretrievedHipCircumference_v =-1;
-		double lretrievedWeight_v =-1;
-		double lretrievedTargetWeight_v =-1;
-		double lretrievedFat_v=-1;
-		double lretrievedTargetFat_v=-1;
+		double lretrievedHeight_v = -1;
+		double lretrievedHipCircumference_v = -1;
+		double lretrievedWeight_v = -1;
+		double lretrievedTargetWeight_v = -1;
+		double lretrievedFat_v = -1;
+		double lretrievedTargetFat_v = -1;
 
-		retrievedFullName= String.valueOf(mFullName.getText());
-		retrievedEmail= String.valueOf(mUserEmail.getText());
-		retrievedGender= String.valueOf(mUserGender.getText());
-		retrievedDOB= datePicked;
-		retrievedHeight=String.valueOf(mUserHeight.getText());
-		retrievedHipCircumference=String.valueOf(mUserHipCircumference.getText());
-		retrievedWeight=String.valueOf(mUserWeight.getText());
-		retrievedTargetWeight=String.valueOf(mUserTargetWeight.getText());
-		retrievedFat=String.valueOf(mUserFat.getText());
-		retrievedTargetFat=String.valueOf(mUserTargetFat.getText());
+		retrievedFullName = String.valueOf(mFullName.getText());
+		retrievedEmail = String.valueOf(mUserEmail.getText());
+		retrievedGender = String.valueOf(mUserGender.getText());
+		retrievedDOB = datePicked;
+		retrievedHeight = String.valueOf(mUserHeight.getText());
+		retrievedHipCircumference = String.valueOf(mUserHipCircumference.getText());
+		retrievedWeight = String.valueOf(mUserWeight.getText());
+		retrievedTargetWeight = String.valueOf(mUserTargetWeight.getText());
+		retrievedFat = String.valueOf(mUserFat.getText());
+		retrievedTargetFat = String.valueOf(mUserTargetFat.getText());
 
-		lretrievedFat_v= nf.parse(retrievedFat).doubleValue();
-		lretrievedTargetFat_v= nf.parse(retrievedTargetFat).doubleValue();
+		lretrievedFat_v = nf.parse(retrievedFat).doubleValue();
+		lretrievedTargetFat_v = nf.parse(retrievedTargetFat).doubleValue();
 
-		if( isWeightValid(retrievedWeight)  && isHeightValid(retrievedHeight) && isHipCircumferenceValid(retrievedHipCircumference) && isWeightValid(retrievedTargetWeight)) {
+		writeLog(String.format(Locale.US, "isAgeValid: %b", isAgeValid()));
+
+		if (isAgeValid() && isWeightValid(retrievedWeight) && isHeightValid(retrievedHeight) && isHipCircumferenceValid(retrievedHipCircumference) && isWeightValid(retrievedTargetWeight)) {
 			lretrievedHeight_v = nf.parse(retrievedHeight).doubleValue();
 			lretrievedHipCircumference_v = nf.parse(retrievedHipCircumference).doubleValue();
 			lretrievedWeight_v = nf.parse(retrievedWeight).doubleValue();
@@ -425,43 +461,43 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		}
 
 		if (bFillJSON) {
-			if( !isWeightValid(retrievedWeight) ) {
-				String errorString= "Weight is invalid: " + retrievedWeight;
+			if (!isWeightValid(retrievedWeight)) {
+				String errorString = "Weight is invalid: " + retrievedWeight;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isHeightValid(retrievedHeight) ) {
-				String errorString= "Height is invalid: " + retrievedHeight;
+			if (!isHeightValid(retrievedHeight)) {
+				String errorString = "Height is invalid: " + retrievedHeight;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isHipCircumferenceValid(retrievedHipCircumference) ) {
-				String errorString= "Hip Circumference is invalid: " + retrievedHipCircumference;
+			if (!isHipCircumferenceValid(retrievedHipCircumference)) {
+				String errorString = "Hip Circumference is invalid: " + retrievedHipCircumference;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isEmailValid(retrievedEmail) ) {
-				String errorString= "email is invalid: " + retrievedEmail;
+			if (!isEmailValid(retrievedEmail)) {
+				String errorString = "email is invalid: " + retrievedEmail;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isNameValid(retrievedFullName) ) {
-				String errorString= "Name is invalid: " + retrievedFullName;
+			if (!isNameValid(retrievedFullName)) {
+				String errorString = "Name is invalid: " + retrievedFullName;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isWeightValid(retrievedTargetWeight) ) {
-				String errorString= "Target Weight is invalid: " + retrievedTargetWeight;
+			if (!isWeightValid(retrievedTargetWeight)) {
+				String errorString = "Target Weight is invalid: " + retrievedTargetWeight;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isFatValid(retrievedFat) ) {
-				String errorString= "Body Fat % is invalid: " + retrievedFat;
+			if (!isFatValid(retrievedFat)) {
+				String errorString = "Body Fat % is invalid: " + retrievedFat;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
-			if( !isFatValid(retrievedTargetFat) ) {
-				String errorString= "Target Body Fat % is invalid: " + retrievedTargetFat;
+			if (!isFatValid(retrievedTargetFat)) {
+				String errorString = "Target Body Fat % is invalid: " + retrievedTargetFat;
 				Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 				return false;
 			}
@@ -485,7 +521,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		} else {
 			writeLog(String.format("getValues: false"));
 		}
-		return(true);
+		return (true);
 	}
 
 	@Override
@@ -496,7 +532,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 				try {
 					if (getValues(true)) {
 						Intent data = new Intent();
-						Bundle returnValue= new Bundle();
+						Bundle returnValue = new Bundle();
 						returnValue.putString("user_data", userData.toString());
 						data.putExtra("data", returnValue);
 						setResult(RESULT_OK, data);
@@ -509,16 +545,20 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 
 			case R.id.user_gender_value:
 				if (mUserGender.isChecked()) {
-					mUserGender.setText("Female");
-					retrievedGender="female";
+					mUserGender.setText(R.string.st_female);
+					retrievedGender = "female";
 				} else {
-					mUserGender.setText("Male");
-					retrievedGender="male";
+					mUserGender.setText(R.string.st_male);
+					retrievedGender = "male";
 				}
 				break;
 
 			case R.id.date_picker_button:
-				showDatePickerDialog(v);
+				try {
+					showDatePickerDialog(v);
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
 				break;
 
 			case R.id.full_name:

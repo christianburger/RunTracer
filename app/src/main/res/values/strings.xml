@@ -344,4 +344,6 @@ infringements of rights of publicity, privacy, trademark rights, business interr
 
 	</string>
 	<string name="splash_screen">splash image</string>
+	<string name="st_female">Female</string>
+	<string name="st_male">Male</string>
 </resources>

@@ -21,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Locale;
 
 import static android.os.Process.myTid;
 
@@ -53,7 +54,8 @@ public class ServerDataService extends IntentService {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate= new Date()).toString());
 		int threadID;
 		threadID = Process.getThreadPriority(myTid());
-		String msg2= String.format("<%d> thread id: %d \t>> ", cdate.getTime(), threadID);
+		String msg2= String.format(Locale.US, "<%d> thread id: %d \t>> ", cdate.getTime(), threadID);
+		Log.e(TAG, date + ": " + msg2 + ": \t" + msg);
 	}
 
 	/**
@@ -83,11 +85,12 @@ public class ServerDataService extends IntentService {
 
 	@Override
 	protected void onHandleIntent(Intent intent) {
-		String hash= null;
+		String hash;
 		if (intent != null) {
 			try {
 				final String action = intent.getAction();
 				hash= intent.getStringExtra("hash");
+				writeLog(String.format("ServerDataService: localDbExchange received hash: %s", hash));
 				if (ACTION_QUERY_SERVER.equals(action)) {
 					if (MainActivity.dbExchange != null && (MainActivity.dbExchange.hash.compareTo(hash) == 0)) {
 						MainActivity.available.acquire();
@@ -95,10 +98,13 @@ public class ServerDataService extends IntentService {
 						localDbExchange= (DataBaseExchange) MainActivity.dbExchange.clone();
 						MainActivity.available.release();
 						localDbExchange.json_data_out = new JSONObject("{\"key\":\"data\"}");
-						//writeLog(String.format("ServerDataService: localDbExchange received full_name: %s", localDbExchange.full_name));
-						//writeLog(String.format("ServerDataService: localDbExchange received accountEmail: %s", localDbExchange.accountEmail));
-						//writeLog(String.format("ServerDataService: localDbExchange received command: %s", localDbExchange.command));
-						//writeLog(String.format("ServerDataService: localDbExchange received url: %s", localDbExchange.url));
+						writeLog(String.format("ServerDataService: localDbExchange received full_name: %s", localDbExchange.full_name));
+						writeLog(String.format("ServerDataService: localDbExchange received accountEmail: %s", localDbExchange.accountEmail));
+						writeLog(String.format("ServerDataService: localDbExchange received command: %s", localDbExchange.command));
+						writeLog(String.format("ServerDataService: localDbExchange received url: %s", localDbExchange.url));
+						writeLog(String.format("ServerDataService: localDbExchange received: error: %s", localDbExchange.error_no));
+						writeLog(String.format("ServerDataService: localDbExchange received: : json_in: %s", localDbExchange.json_data_in));
+						writeLog(String.format("ServerDataService: localDbExchange received: : json_out: %s", localDbExchange.json_data_out));
 						doExchange(localDbExchange);
 						handleActionQueryServer(hash);
 					}
@@ -145,7 +151,7 @@ public class ServerDataService extends IntentService {
 			assert dbEx.url != null;
 			httpConnection = (HttpURLConnection) dbEx.url.openConnection();
 		} catch (IOException e) {
-			writeLog(String.format("ServerDataService:doExchange: %d :IOException: %s", dbgidx, e.toString()));
+			writeLog(String.format(Locale.US, "ServerDataService:doExchange: %d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
 			dbEx.error_no= dbgidx;
 			return dbEx;
@@ -159,7 +165,7 @@ public class ServerDataService extends IntentService {
 			httpConnection.setUseCaches(false);
 			httpConnection.setRequestMethod("POST");
 		} catch (ProtocolException e) {
-			writeLog(String.format("ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
+			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
 			dbEx.error_no= dbgidx;
 			return dbEx;
@@ -178,7 +184,7 @@ public class ServerDataService extends IntentService {
 			os.flush();
 			os.close();
 		} catch (IOException e) {
-			writeLog(String.format("ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
+			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
 			dbEx.error_no= dbgidx;
 			httpConnection.disconnect();
@@ -188,7 +194,7 @@ public class ServerDataService extends IntentService {
 		try {
 			httpConnection.connect();
 		} catch (IOException e) {
-			writeLog(String.format("ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
+			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
 			dbEx.error_no= dbgidx;
 			httpConnection.disconnect();
@@ -217,7 +223,7 @@ public class ServerDataService extends IntentService {
 			isr.close();
 			in.close();
 		} catch ( IOException | JSONException e) {
-			writeLog(String.format("ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
+			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
 			dbEx.error_no= dbgidx;
 			httpConnection.disconnect();
@@ -232,7 +238,7 @@ public class ServerDataService extends IntentService {
 				Thread.sleep(delay);
 			}
 		} catch (InterruptedException e) {
-			writeLog(String.format("ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
+			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
 			dbEx.error_no= dbgidx;
 			httpConnection.disconnect();
