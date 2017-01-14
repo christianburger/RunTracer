@@ -61,6 +61,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 
 public class RunActivity extends Activity implements View.OnClickListener, SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>, View.OnLongClickListener, LocationListener {
 
@@ -305,10 +306,10 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 	private boolean measureRecoveryHeartRate() {
 		boolean bok = false;
-		if (run_data.current_heart_rate > 10 ) {
-			this.bMeasuredPeak=true;
-			this.heart_rate_at_peak= run_data.current_heart_rate;
-			this.heart_rate_at_rest= run_data.current_heart_rate;
+		if (run_data.current_heart_rate > user_bio.resting_hr && user_bio.resting_hr > user_bio.RESTING_HR_MIN) {
+			this.bMeasuredPeak = true;
+			this.heart_rate_at_peak = run_data.current_heart_rate;
+			this.heart_rate_at_rest = run_data.current_heart_rate;
 		}
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
 		// set title
@@ -347,14 +348,14 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		sm.unregisterListener(this);
 		locationManager.removeUpdates(this);
 		//TODO: criteria to measure heart recovery rate
-		if (run_data.current_heart_rate > 10 ) {
+		if (run_data.current_heart_rate > 10) {
 			measureRecoveryHeartRate();
 			new Handler().postDelayed(new Runnable() {
 				@Override
 				public void run() {
-					if (bMeasuredPeak && run_data.current_heart_rate > user_bio.target_hr_moderate && ( heart_rate_at_peak - run_data.current_heart_rate) > 0  ) {
-						heart_rate_at_rest= run_data.current_heart_rate;
-						run_data.recovery_hr= heart_rate_at_peak - heart_rate_at_rest;
+					if (bMeasuredPeak && run_data.current_heart_rate > user_bio.target_hr_moderate && (heart_rate_at_peak - run_data.current_heart_rate) > 0) {
+						heart_rate_at_rest = run_data.current_heart_rate;
+						run_data.recovery_hr = heart_rate_at_peak - heart_rate_at_rest;
 					}
 					try {
 						finishRunNow();
@@ -364,7 +365,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				}
 			}, 60000);
 		} else {
-			run_data.recovery_hr= -1;
+			run_data.recovery_hr = 0;
 			finishRunNow();
 		}
 	}
@@ -381,7 +382,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 	private boolean sendServerDataServiceRequest(String hash) throws InterruptedException {
 		writeLog("sendServerDataServiceRequest!!");
-		boolean result= false;
+		boolean result = false;
 		if (isServerReady()) {
 			writeLog("sendServerDataServiceRequest: server ready!!");
 			MainActivity.available.acquire();
@@ -390,26 +391,26 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			Intent mServiceIntent = new Intent(this, ServerDataService.class);
 			mServiceIntent.setAction(ServerDataService.ACTION_QUERY_SERVER);
 			mServiceIntent.putExtra("hash", hash);
-			MainActivity.lastHash= hash;
+			MainActivity.lastHash = hash;
 			this.startService(mServiceIntent);
-			result= true;
+			result = true;
 		}
 		return result;
 	}
 
 	private boolean isServerReady() throws InterruptedException {
-		boolean result= false;
-		for (int attempts= 0; attempts < MAX_ATTEMPTS && !result; attempts++) {
+		boolean result = false;
+		for (int attempts = 0; attempts < MAX_ATTEMPTS && !result; attempts++) {
 			MainActivity.available.acquire();
-			result= !MainActivity.dbExchange.pending;
+			result = !MainActivity.dbExchange.pending;
 			MainActivity.available.release();
 		}
 		return result;
 	}
 
 	private boolean sendRunData() throws InterruptedException, JSONException, ParseException, NoSuchAlgorithmException, IOException {
-		boolean result= false;
-		boolean data_ok= run_data.checkRunData();
+		boolean result = false;
+		boolean data_ok = run_data.checkRunData();
 		String hash;
 		if (data_ok && isServerReady()) {
 			MainActivity.available.acquire();
@@ -427,7 +428,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			MainActivity.dbExchange.json_data_in.accumulate("session_id", user_bio.session_id);
 			hash = MainActivity.dbExchange.getHash();
 			MainActivity.available.release();
-			result= sendServerDataServiceRequest(hash);
+			result = sendServerDataServiceRequest(hash);
 		}
 		return result;
 	}
@@ -444,7 +445,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		}
 	}
 
-	@Override protected void onStart() {
+	@Override
+	protected void onStart() {
 		super.onStart();
 	}
 
@@ -462,14 +464,14 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		writeLog("RunActivity: onStop...");
 	}
 
-	@Override protected void onDestroy() {
+	@Override
+	protected void onDestroy() {
 		super.onDestroy();
 		if (isRegistered) {
 			unregisterReceiver(mGattUpdateReceiver);
 			isRegistered = false;
 		}
 		writeLog("RunActivity: onDestroy...");
-		return;
 	}
 
 	@Override
@@ -493,48 +495,48 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		return super.onOptionsItemSelected(item);
 	}
 
-	private double getAvgGrade (double current_angle) {
-		double sum_grade=0;
-		double avg_grade=0;
-		if (fifo_grade.size()>fifo_sz_angle) {
+	private double getAvgGrade(double current_angle) {
+		double sum_grade = 0;
+		double avg_grade = 0;
+		if (fifo_grade.size() > fifo_sz_angle) {
 			fifo_grade.removeFirst();
 		}
 		fifo_grade.add(current_angle);
-		for (int i=0; i<(fifo_grade.size()); i++) {
-			sum_grade= fifo_grade.get(i) + sum_grade;
+		for (int i = 0; i < (fifo_grade.size()); i++) {
+			sum_grade = fifo_grade.get(i) + sum_grade;
 		}
-		avg_grade= sum_grade / fifo_grade.size();
+		avg_grade = sum_grade / fifo_grade.size();
 		return avg_grade;
 	}
 
 	private double getAvgAcceleration(double current_acceleration) {
-		double sum_acceleration=0;
-		double avg_acceleration=0;
-		if (fifo_acceleration.size()>fifo_sz_accel) {
+		double sum_acceleration = 0;
+		double avg_acceleration = 0;
+		if (fifo_acceleration.size() > fifo_sz_accel) {
 			fifo_acceleration.removeFirst();
 		}
 		fifo_acceleration.add(current_acceleration);
-		for (int i=0; i<(fifo_acceleration.size()); i++) {
-			sum_acceleration= fifo_acceleration.get(i) + sum_acceleration;
+		for (int i = 0; i < (fifo_acceleration.size()); i++) {
+			sum_acceleration = fifo_acceleration.get(i) + sum_acceleration;
 		}
-		avg_acceleration= sum_acceleration / fifo_acceleration.size();
+		avg_acceleration = sum_acceleration / fifo_acceleration.size();
 		return avg_acceleration;
 	}
 
 	private double getAvgSpeed(double current_speed) {
-		double sum_speed=0;
-		double avg_speed=0;
-		if(current_speed>human_speed_limit) {
-			current_speed=human_speed_limit;
+		double sum_speed = 0;
+		double avg_speed = 0;
+		if (current_speed > human_speed_limit) {
+			current_speed = human_speed_limit;
 		}
-		if (fifo_speed.size()>fifo_sz_speed) {
+		if (fifo_speed.size() > fifo_sz_speed) {
 			fifo_speed.removeFirst();
 		}
 		fifo_speed.add(current_speed);
-		for (int i=0; i<(fifo_speed.size()); i++) {
-			sum_speed= fifo_speed.get(i) + sum_speed;
+		for (int i = 0; i < (fifo_speed.size()); i++) {
+			sum_speed = fifo_speed.get(i) + sum_speed;
 		}
-		avg_speed= sum_speed/ fifo_speed.size();
+		avg_speed = sum_speed / fifo_speed.size();
 		return avg_speed;
 	}
 
@@ -550,6 +552,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			mBluetoothLeService.connect(mDeviceAddress);
 			writeLog("RunActivity: Bluetooth LE Service connected: " + mDeviceAddress);
 		}
+
 		@Override
 		public void onServiceDisconnected(ComponentName componentName) {
 			mBluetoothLeService = null;
@@ -570,16 +573,16 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			final String action = intent.getAction();
 			if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
 			} else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-				run_data.current_heart_rate= -1;
+				run_data.current_heart_rate = -1;
 			} else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
 				// Show all the supported services and characteristics on the user interface.
 				displayGattServices(mBluetoothLeService.getSupportedGattServices());
 				writeLog((mBluetoothLeService.getSupportedGattServices()).toString());
 			} else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-				String data= (intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+				String data = (intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
 				TextView t = (TextView) findViewById(R.id.heart_rate_value);
 				t.setText(data);
-				run_data.current_heart_rate= Integer.parseInt(data);
+				run_data.current_heart_rate = Integer.parseInt(data);
 			}
 		}
 	};
@@ -593,7 +596,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		String unknownServiceString = getResources().getString(R.string.unknown_service);
 		String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
 		ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
-		ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData=  new ArrayList<ArrayList<HashMap<String, String>>>();
+		ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData = new ArrayList<ArrayList<HashMap<String, String>>>();
 		mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
 		// Loops through available GATT Services.
 		for (BluetoothGattService gattService : gattServices) {
@@ -627,9 +630,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		}
 	}
 
-	public void onActivityResult(int requestCode, int resultCode, Intent data)
-	{
-		String bluetoothDeviceName="";
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		String bluetoothDeviceName = "";
 		writeLog("RunActivity: onActivityResult");
 		if (resultCode == RESULT_OK) {
 			bluetoothDeviceName = data.getStringExtra("BluetoothDeviceName");
@@ -648,12 +650,12 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				finish();
 				return;
 			}
-			BluetoothDevice btdevice= mBluetoothAdapter.getRemoteDevice(bluetoothDeviceName);
-			mDeviceAddress= btdevice.getAddress();
+			BluetoothDevice btdevice = mBluetoothAdapter.getRemoteDevice(bluetoothDeviceName);
+			mDeviceAddress = btdevice.getAddress();
 			writeLog("RunActivity: bluetoothDeviceName parsed from scan activity: " + btdevice.toString());
 			Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
 			bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
-		} catch ( Exception e) {
+		} catch (Exception e) {
 			e.getStackTrace();
 		}
 		//final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(bluetoothDeviceName);
@@ -662,55 +664,55 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 	private void setupGui() {
 
-		mTableLayout0= (TableLayout) findViewById(R.id.table_layout_0);
-		mTableLayout1= (TableLayout) findViewById(R.id.table_layout_1);
-		mTableLayout2= (TableLayout) findViewById(R.id.table_layout_2);
-		mTableLayout3= (TableLayout) findViewById(R.id.table_layout_3);
-		mTableLayout4= (TableLayout) findViewById(R.id.table_layout_4);
-		mTableLayout5= (TableLayout) findViewById(R.id.table_layout_5);
+		mTableLayout0 = (TableLayout) findViewById(R.id.table_layout_0);
+		mTableLayout1 = (TableLayout) findViewById(R.id.table_layout_1);
+		mTableLayout2 = (TableLayout) findViewById(R.id.table_layout_2);
+		mTableLayout3 = (TableLayout) findViewById(R.id.table_layout_3);
+		mTableLayout4 = (TableLayout) findViewById(R.id.table_layout_4);
+		mTableLayout5 = (TableLayout) findViewById(R.id.table_layout_5);
 
-		mMotionDistanceRow= (TableRow) findViewById(R.id.motion_distance_row);
-		mMotionSpeedRow= (TableRow) findViewById(R.id.motion_speed_row);
+		mMotionDistanceRow = (TableRow) findViewById(R.id.motion_distance_row);
+		mMotionSpeedRow = (TableRow) findViewById(R.id.motion_speed_row);
 
-		mGPSDistanceRow= (TableRow) findViewById(R.id.gps_distance_row);
-		mGPSSpeedRow= (TableRow) findViewById(R.id.gps_speed_row);
+		mGPSDistanceRow = (TableRow) findViewById(R.id.gps_distance_row);
+		mGPSSpeedRow = (TableRow) findViewById(R.id.gps_speed_row);
 
-		acceleration= (TextView) findViewById(R.id.acceleration);
+		acceleration = (TextView) findViewById(R.id.acceleration);
 
-		mSpeedMotion= (TextView) findViewById(R.id.speed_ui);
-		mSpeedGPS= (TextView) findViewById(R.id.gps_speed_value);
+		mSpeedMotion = (TextView) findViewById(R.id.speed_ui);
+		mSpeedGPS = (TextView) findViewById(R.id.gps_speed_value);
 
-		mCaloriesDistance= (TextView) findViewById(R.id.calories_distance_value);
-		mCaloriesHeartBeat= (TextView) findViewById(R.id.calories_heart_beat_value);
+		mCaloriesDistance = (TextView) findViewById(R.id.calories_distance_value);
+		mCaloriesHeartBeat = (TextView) findViewById(R.id.calories_heart_beat_value);
 
-		mDistanceGPS= (TextView) findViewById(R.id.gps_distance_value);
-		mDistanceMotion= (TextView) findViewById(R.id.distance_value);
+		mDistanceGPS = (TextView) findViewById(R.id.gps_distance_value);
+		mDistanceMotion = (TextView) findViewById(R.id.distance_value);
 
-		mDistanceUnitsMotion= (TextView) findViewById(R.id.distance_units);
-		mDistanceUnitsGPS= (TextView) findViewById(R.id.gps_distance_units);
+		mDistanceUnitsMotion = (TextView) findViewById(R.id.distance_units);
+		mDistanceUnitsGPS = (TextView) findViewById(R.id.gps_distance_units);
 
-		mSpeedUnitsMotion= (TextView) findViewById(R.id.speed_units);
-		mSpeedUnitsGPS= (TextView) findViewById(R.id.gps_speed_units);
+		mSpeedUnitsMotion = (TextView) findViewById(R.id.speed_units);
+		mSpeedUnitsGPS = (TextView) findViewById(R.id.gps_speed_units);
 
-		btn_start=(Button) findViewById(R.id.btn_start_run);
+		btn_start = (Button) findViewById(R.id.btn_start_run);
 		btn_start.setOnClickListener(this);
 		btn_start.setOnLongClickListener(this);
 
 		btn_start.setEnabled(true);
 
-		btn_done_run=(Button) findViewById(R.id.btn_done_run);
+		btn_done_run = (Button) findViewById(R.id.btn_done_run);
 		btn_done_run.setOnClickListener(this);
 		btn_done_run.setEnabled(true);
 
-		btn_indoor= (Switch) findViewById(R.id.run_indoor_value);
+		btn_indoor = (Switch) findViewById(R.id.run_indoor_value);
 		btn_indoor.setOnClickListener(this);
 		btn_indoor.setEnabled(true);
 
-		btn_measure_inclination= (Button) findViewById(R.id.measure_inclination_button);
+		btn_measure_inclination = (Button) findViewById(R.id.measure_inclination_button);
 		btn_measure_inclination.setOnClickListener(this);
 		btn_measure_inclination.setEnabled(true);
 
-		btn_calibrate= (Button) findViewById(R.id.calibrate_button);
+		btn_calibrate = (Button) findViewById(R.id.calibrate_button);
 		btn_calibrate.setOnClickListener(this);
 		btn_calibrate.setEnabled(true);
 
@@ -718,19 +720,19 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		mCurrentInclination.setOnClickListener(this);
 		mCurrentInclination.setEnabled(true);
 
-		mRunInclination= (TextView) findViewById(R.id.run_inclination_value);
+		mRunInclination = (TextView) findViewById(R.id.run_inclination_value);
 		mRunInclination.setOnClickListener(this);
 		mRunInclination.setEnabled(true);
 
-		mChronometer= (Chronometer) findViewById(R.id.time_value);
+		mChronometer = (Chronometer) findViewById(R.id.time_value);
 
-		mCaloriesDistance= (TextView) findViewById(R.id.calories_distance_value);
-		mDistanceMotion= (TextView) findViewById(R.id.distance_value);
+		mCaloriesDistance = (TextView) findViewById(R.id.calories_distance_value);
+		mDistanceMotion = (TextView) findViewById(R.id.distance_value);
 
-		mDistanceUnitsMotion= (TextView) findViewById(R.id.distance_units);
+		mDistanceUnitsMotion = (TextView) findViewById(R.id.distance_units);
 		mDistanceUnitsMotion.setEnabled(true);
 
-		mSpeedUnitsMotion= (TextView) findViewById(R.id.speed_units);
+		mSpeedUnitsMotion = (TextView) findViewById(R.id.speed_units);
 		mSpeedUnitsMotion.setEnabled(true);
 
 		mAccelerationBar = (ProgressBar) findViewById(R.id.accelerationBar);
@@ -784,7 +786,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			mSpeedUnitsGPS.setEnabled(true);
 
 			mDistanceUnitsMotion.setEnabled(false);
-			mSpeedUnitsMotion.setEnabled(false );
+			mSpeedUnitsMotion.setEnabled(false);
 
 			mMotionDistanceRow.setBackgroundColor(Color.LTGRAY);
 			mMotionSpeedRow.setBackgroundColor(Color.LTGRAY);
@@ -798,7 +800,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		try {
 			switch (v.getId()) {
 				case R.id.btn_start_run:
-					writeLog(String.format("onLongClick..."));
+					writeLog("onLongClick...");
 					break;
 			}
 		} catch (Exception e) {
@@ -820,19 +822,19 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 					break;
 
 				case R.id.run_indoor_value:
-					run_data.threadmill_factor= (btn_indoor.isChecked())?0:0.84;
-					writeLog(String.format("threadmill factor= %.2f", run_data.threadmill_factor));
+					run_data.threadmill_factor = (btn_indoor.isChecked()) ? 0 : 0.84;
+					writeLog(String.format(Locale.US, "threadmill factor= %.2f", run_data.threadmill_factor));
 					updateGui();
 					break;
 
 				case R.id.measure_inclination_button:
 					writeLog("Pressed button measure inclination.");
-					mRunInclination.setText(String.format("%.2f", accelerometer_vector.avgGrade - accelerometer_vector.gradeOffset ));
+					mRunInclination.setText(String.format(Locale.getDefault(), "%.2f", accelerometer_vector.avgGrade - accelerometer_vector.gradeOffset));
 					break;
 
 				case R.id.calibrate_button:
-					accelerometer_vector.gradeOffset= accelerometer_vector.avgGrade;
-					writeLog(String.format("Calibrating inclination value to %.2f", accelerometer_vector.gradeOffset ));
+					accelerometer_vector.gradeOffset = accelerometer_vector.avgGrade;
+					writeLog(String.format(Locale.US, "Calibrating inclination value to %.2f", accelerometer_vector.gradeOffset));
 					break;
 
 				case R.id.measure_inclination_value:
@@ -862,9 +864,9 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	 */
 	@Override
 	public void onLocationChanged(Location location) {
-		if (location!= null) {
-			this.gps_on= true;
-			this.no_satellites= countSatellites();
+		if (location != null) {
+			this.gps_on = true;
+			this.no_satellites = countSatellites();
 
 			this.latitude = location.getLatitude();
 			this.longitude = location.getLongitude();
@@ -915,8 +917,9 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
 		/******** Called when User on Gps  *********/
-		this.no_satellites= countSatellites();
-		String str = String.format("Latitude: %.2f \nLongitude: %.2f \nNumber of Satellites: %d \nStatus: %d", this.latitude, this.longitude, this.no_satellites, status);
+		this.no_satellites = countSatellites();
+		String str = String.format(Locale.US, "Latitude: %.2f \nLongitude: %.2f \nNumber of Satellites: %d \nStatus: %d", this.latitude, this.longitude, this.no_satellites, status);
+		writeLog(String.format(Locale.US, "RunActivity: onStatusChanged: %s", str));
 	}
 
 	/**
@@ -928,7 +931,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	@Override
 	public void onProviderEnabled(String provider) {
 		/******** Called when User on Gps  *********/
-		this.gps_on= true;
+		this.gps_on = true;
 	}
 
 	/**
@@ -943,73 +946,73 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	public void onProviderDisabled(String provider) {
 		/******** Called when User off Gps *********/
 		Toast.makeText(getBaseContext(), "Gps turned off ", Toast.LENGTH_LONG).show();
-		this.gps_on= false;
+		this.gps_on = false;
 	}
 
 	private class Vector {
-		public double x=0.0;
-		public double y=0.0;
-		public double z=0.0;
-		public double gradeOffset= 0.0;
-		public double avgGrade= 0.0;
+		double x = 0.0;
+		double y = 0.0;
+		double z = 0.0;
+		double gradeOffset = 0.0;
+		double avgGrade = 0.0;
 
 		Vector() {
-			this.x=0.0;
-			this.y=0.0;
-			this.z=0.0;
+			this.x = 0.0;
+			this.y = 0.0;
+			this.z = 0.0;
 		}
 
-		public double getGrade() {
-			double grade= 0;
-			double angle=0.0;
+		double getGrade() {
+			double grade = 0;
+			double angle = 0.0;
 
-			angle= Math.toRadians(this.getAngle());
-			if (angle < (Math.PI * 0.8) ) {
+			angle = Math.toRadians(this.getAngle());
+			if (angle < (Math.PI * 0.8)) {
 				grade = Math.sin(angle) / Math.cos(angle);
-				grade*= 100.00;
+				grade *= 100.00;
 			}
 
 			return (grade);
 		}
 
 		double getAngle() {
-			double modulus=0.0;
+			double modulus = 0.0;
 
-			double cosine_alpha= 0.0;
-			double cosine_beta= 0.0;
-			double cosine_gamma= 0.0;
+			double cosine_alpha = 0.0;
+			double cosine_beta = 0.0;
+			double cosine_gamma = 0.0;
 
-			double angle_alpha= 0.0;
-			double angle_beta= 0.0;
-			double angle_gamma= 0.0;
+			double angle_alpha = 0.0;
+			double angle_beta = 0.0;
+			double angle_gamma = 0.0;
 
-			modulus= Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2));
+			modulus = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2));
 
-			cosine_alpha= this.x / modulus;
-			cosine_beta= this.y / modulus;
-			cosine_gamma= this.z / modulus;
+			cosine_alpha = this.x / modulus;
+			cosine_beta = this.y / modulus;
+			cosine_gamma = this.z / modulus;
 
-			angle_alpha=  Math.toDegrees(Math.asin(cosine_alpha));
-			angle_beta=   Math.toDegrees(Math.asin(cosine_beta));
-			angle_gamma=  Math.toDegrees(Math.asin(cosine_gamma));
+			angle_alpha = Math.toDegrees(Math.asin(cosine_alpha));
+			angle_beta = Math.toDegrees(Math.asin(cosine_beta));
+			angle_gamma = Math.toDegrees(Math.asin(cosine_gamma));
 
-			return(angle_beta);
+			return (angle_beta);
 		}
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		accelerometer_value=0;
+		accelerometer_value = 0;
 		accelerometer_value = Math.sqrt(Math.pow(event.values[0], 2) + Math.pow(event.values[1], 2) + Math.pow(event.values[2], 2));
 
-		accelerometer_vector.x= event.values[0];
-		accelerometer_vector.y= event.values[1];
-		accelerometer_vector.z= event.values[2];
-		accelerometer_vector.avgGrade= getAvgGrade(accelerometer_vector.getGrade());
+		accelerometer_vector.x = event.values[0];
+		accelerometer_vector.y = event.values[1];
+		accelerometer_vector.z = event.values[2];
+		accelerometer_vector.avgGrade = getAvgGrade(accelerometer_vector.getGrade());
 
 		if (user_status == IDLE) {
 			if (accelerometer_vector.getAngle() > -55 && accelerometer_vector.getAngle() < 55) {
-				mCurrentInclination.setText(String.format("%.2f %%", accelerometer_vector.avgGrade - accelerometer_vector.gradeOffset ));
+				mCurrentInclination.setText(String.format(Locale.getDefault(), "%.2f %%", accelerometer_vector.avgGrade - accelerometer_vector.gradeOffset));
 				btn_calibrate.setEnabled(true);
 				btn_measure_inclination.setEnabled(true);
 			} else {
@@ -1022,30 +1025,30 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			btn_measure_inclination.setEnabled(false);
 
 			ViewGroup layout1 = (ViewGroup) btn_measure_inclination.getParent();
-			if(null!=layout1) {
+			if (null != layout1) {
 				layout1.removeView(btn_measure_inclination);
 			}
 			ViewGroup layout2 = (ViewGroup) btn_calibrate.getParent();
-			if(null!=layout2) {
+			if (null != layout2) {
 				layout2.removeView(btn_calibrate);
 			}
 		}
 
-		if ( (Math.abs(accelerometer_value - accelerometer_last_value) > accelerometer_spurious_change) ) {
+		if ((Math.abs(accelerometer_value - accelerometer_last_value) > accelerometer_spurious_change)) {
 			//spurious value, will be discarded.
-			accelerometer_value= accelerometer_last_value;
+			accelerometer_value = accelerometer_last_value;
 		}
-		accelerometer_last_value= accelerometer_value;
+		accelerometer_last_value = accelerometer_value;
 		avg_acceleration = getAvgAcceleration(accelerometer_value);
 
-		mCaloriesDistance.setText(String.format("%.2f", run_data.calories_v_distance));
-		mCaloriesHeartBeat.setText(String.format("%.2f", run_data.calories_v_heart_beat));
+		mCaloriesDistance.setText(String.format(Locale.getDefault(), "%.2f", run_data.calories_v_distance));
+		mCaloriesHeartBeat.setText(String.format(Locale.getDefault(), "%.2f", run_data.calories_v_heart_beat));
 
 		mAccelerationBar.setProgress((int) (accelerometer_value * 10));
 		acceleration.setText(String.format("Status: %s", status));
 
-		threshold_begin=avg_acceleration + threshold_modulus;
-		threshold_end=avg_acceleration - threshold_modulus ;
+		threshold_begin = avg_acceleration + threshold_modulus;
+		threshold_end = avg_acceleration - threshold_modulus;
 
 		switch (state) {
 
@@ -1055,41 +1058,41 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				break;
 
 			case STATE_OUTSIDE:
-				time_now= new Date().getTime();
+				time_now = new Date().getTime();
 
-				if ( (time_now - time_end) > time_threshold)  {
+				if ((time_now - time_end) > time_threshold) {
 					time_difference = time_now - time_end;
-					run_data.current_speed_m_s_v= (avg_distance / time_difference) * 1000;
-					run_data.current_speed_km_h_v= run_data.current_speed_m_s_v * run_data.conv_m_s_km_h;
+					run_data.current_speed_m_s_v = (avg_distance / time_difference) * 1000;
+					run_data.current_speed_km_h_v = run_data.current_speed_m_s_v * run_data.conv_m_s_km_h;
 				}
 
-				if (accelerometer_value > threshold_begin ) {
-					state= STATE_INSIDE;
-					time_start= new Date().getTime();
+				if (accelerometer_value > threshold_begin) {
+					state = STATE_INSIDE;
+					time_start = new Date().getTime();
 				}
 				break;
 
 			case STATE_INSIDE:
-				time_now= new Date().getTime();
-				if ( (time_now - time_start) > time_threshold)  {
-					state= STATE_OUTSIDE;
+				time_now = new Date().getTime();
+				if ((time_now - time_start) > time_threshold) {
+					state = STATE_OUTSIDE;
 				}
 
-				if (accelerometer_value < threshold_end ) {
-					state= STATE_OUTSIDE;
-					time_end= new Date().getTime();
-					if ( ((time_end - time_start) < time_diff_max) && ((time_end - time_start) > time_diff_min) )  {
+				if (accelerometer_value < threshold_end) {
+					state = STATE_OUTSIDE;
+					time_end = new Date().getTime();
+					if (((time_end - time_start) < time_diff_max) && ((time_end - time_start) > time_diff_min)) {
 						time_difference = time_end - time_start;
-						run_data.current_speed_m_s_v= (avg_distance / time_difference) * 1000;
-						run_data.current_speed_km_h_v= run_data.current_speed_m_s_v * run_data.conv_m_s_km_h;
-						run_data.distance_m_v= run_data.distance_m_v + avg_distance;
-						run_data.distance_km_v= run_data.distance_m_v / 1000;
+						run_data.current_speed_m_s_v = (avg_distance / time_difference) * 1000;
+						run_data.current_speed_km_h_v = run_data.current_speed_m_s_v * run_data.conv_m_s_km_h;
+						run_data.distance_m_v = run_data.distance_m_v + avg_distance;
+						run_data.distance_km_v = run_data.distance_m_v / 1000;
 					}
 				}
 				break;
 
 			default:
-				state= STATE_INITIAL;
+				state = STATE_INITIAL;
 				break;
 		}
 		/*  Male: ((-55.0969 + (0.6309 x HR) + (0.1988 x W) + (0.2017 x A))/4.184) x 60 x T
@@ -1098,11 +1101,11 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		run_data.getValues();
 
 		if (user_status == RUNNING) {
-			time_calories_now= new Date().getTime();
-			long delta_time= ( time_calories_now - time_calories_last );
-			double delta_time_hours= ((double)delta_time) / 1000 / 60 / 60;
+			time_calories_now = new Date().getTime();
+			long delta_time = (time_calories_now - time_calories_last);
+			double delta_time_hours = ((double) delta_time) / 1000 / 60 / 60;
 
-			if ( delta_time > run_data.granularity_time ) {
+			if (delta_time > run_data.granularity_time) {
 				if (run_data.current_heart_rate >= user_bio.resting_hr && user_bio.resting_hr > 20 && user_bio.resting_hr < 100) {
 					if (user_bio.gender_v) {
 						//Male: ((-55.0969 + (0.6309 x HR) + (0.1988 x W) + (0.2017 x A))/4.184) x 60 x T */
@@ -1134,8 +1137,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				}
 				time_calories_last = new Date().getTime();
 
-				double usedMemoryPercentage= 100 * (double) availableMemory() / (double) totalMemory();
-				if ( usedMemoryPercentage < 80 ) {
+				double usedMemoryPercentage = 100 * (double) availableMemory() / (double) totalMemory();
+				if (usedMemoryPercentage < 80) {
 					run_data.pushInstant(run_data.average_speed_km_h_v, this.avg_distance, this.gps_speed, run_data.gps_distance_km, run_data.calories_v_distance, run_data.calories_v_heart_beat, run_data.current_heart_rate, this.longitude, this.latitude, this.altitude);
 				} else {
 					writeLog("RunActivity: ERROR: MEMORY USE ABOVE 80%.");
@@ -1143,33 +1146,33 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			}
 		}
 		run_data.getValues();
-		run_data.average_speed_km_h_v= getAvgSpeed(run_data.current_speed_km_h_v);
+		run_data.average_speed_km_h_v = getAvgSpeed(run_data.current_speed_km_h_v);
 		if (user_bio.bMetricSystem) {
 			mDistanceMotion.setText(String.format("%.2f", run_data.distance_km_v));
 			mDistanceGPS.setText(String.format("%.2f", run_data.gps_distance_km));
 			mSpeedMotion.setText(String.format("%.2f", run_data.average_speed_km_h_v));
-			mSpeedGPS.setText(String.format("%.2f",  this.gps_speed));
+			mSpeedGPS.setText(String.format("%.2f", this.gps_speed));
 		} else {
 			mDistanceMotion.setText(String.format("%.2f", run_data.distance_miles_v));
 			mDistanceGPS.setText(String.format("%.2f", run_data.gps_distance_miles));
-			mSpeedMotion.setText(String.format("%.2f",  run_data.average_speed_miles_h_v));
-			mSpeedGPS.setText(String.format("%.2f",  this.gps_speed));
+			mSpeedMotion.setText(String.format("%.2f", run_data.average_speed_miles_h_v));
+			mSpeedGPS.setText(String.format("%.2f", this.gps_speed));
 		}
-		double idle_speed= 1;
-		double walking_speed= 2;
+		double idle_speed = 1;
+		double walking_speed = 2;
 		if (run_data.average_speed_km_h_v < idle_speed) {
-			status="Idle";
+			status = "Idle";
 		} else {
-			this_time=  new Date().getTime();
-			last_time=  new Date().getTime();
+			this_time = new Date().getTime();
+			last_time = new Date().getTime();
 			if (run_data.average_speed_km_h_v < walking_speed) {
-				status="Walking";
+				status = "Walking";
 			} else {
 				status = "Running";
 			}
 		}
-		if(run_data.current_speed_m_s_v > 0) {
-			last_curr_speed= run_data.current_speed_m_s_v;
+		if (run_data.current_speed_m_s_v > 0) {
+			last_curr_speed = run_data.current_speed_m_s_v;
 		}
 	}
 
@@ -1195,14 +1198,14 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	}
 
 	public void startChronometer(View view) {
-		switch(user_status) {
+		switch (user_status) {
 			case IDLE:
 				updateChronometer();
 				showElapsedTime();
 				mChronometer.setBase(SystemClock.elapsedRealtime());
 				mChronometer.start();
-				user_status= RUNNING;
-				time_calories_last= new Date().getTime();
+				user_status = RUNNING;
+				time_calories_last = new Date().getTime();
 				run_data.setStartTime();
 				btn_start.setText("STOP");
 				break;
@@ -1211,8 +1214,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				updateChronometer();
 				showElapsedTime();
 				mChronometer.start();
-				user_status= RUNNING;
-				time_calories_last= new Date().getTime();
+				user_status = RUNNING;
+				time_calories_last = new Date().getTime();
 				btn_start.setText("STOP");
 				break;
 
@@ -1220,7 +1223,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				updateChronometer();
 				showElapsedTime();
 				mChronometer.stop();
-				user_status= PAUSED;
+				user_status = PAUSED;
 				btn_start.setText("RESUME");
 				break;
 		}
@@ -1244,7 +1247,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		PackageManager m = getPackageManager();
 		String s = getPackageName();
 		PackageInfo p = m.getPackageInfo(s, 0);
-		path= p.applicationInfo.dataDir;
+		path = p.applicationInfo.dataDir;
 
 		return (path);
 	}

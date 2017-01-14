@@ -31,8 +31,8 @@ import static android.os.Process.myTid;
  */
 public class ServerDataService extends IntentService {
 
-	protected static final String ACTION_QUERY_SERVER= "com.runtracer.query_server";
-	protected static final String ACTION_REPORT_STATUS= "com.runtracer.report_status";
+	protected static final String ACTION_QUERY_SERVER = "com.runtracer.query_server";
+	protected static final String ACTION_REPORT_STATUS = "com.runtracer.report_status";
 	protected static final String PARAM_OUT_MSG = "param_out_msg";
 
 	private static final String EXTRA_PARAM1 = "com.runtracer.extra.PARAM1";
@@ -45,22 +45,23 @@ public class ServerDataService extends IntentService {
 
 	public ServerDataService() {
 		super("ServerDataService");
-		localDbExchange= DataBaseExchange.createDataBaseExchange();
+		localDbExchange = DataBaseExchange.createDataBaseExchange();
 		writeLog("\n\n\n\n\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nServerDataService: starting ServerDataService...");
 	}
 
 	public void writeLog(String msg) {
 		Date cdate;
-		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate= new Date()).toString());
+		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate = new Date()).toString());
 		int threadID;
 		threadID = Process.getThreadPriority(myTid());
-		String msg2= String.format(Locale.US, "<%d> thread id: %d \t>> ", cdate.getTime(), threadID);
+		String msg2 = String.format(Locale.US, "<%d> thread id: %d \t>> ", cdate.getTime(), threadID);
 		Log.e(TAG, date + ": " + msg2 + ": \t" + msg);
 	}
 
 	/**
 	 * Starts this service to perform action QueryServer with the given parameters.
 	 * If the service is already performing a task this action will be queued.
+	 *
 	 * @see IntentService
 	 */
 	public static void startActionQueryServer(Context context, String param1, String param2) {
@@ -71,8 +72,10 @@ public class ServerDataService extends IntentService {
 		context.startService(intent);
 	}
 
-	/** Starts this service to perform action ReportStatus with the given parameters.
+	/**
+	 * Starts this service to perform action ReportStatus with the given parameters.
 	 * If the service is already performing a task this action will be queued.
+	 *
 	 * @see IntentService
 	 */
 	public static void startActionReportStatus(Context context, String param1, String param2) {
@@ -89,13 +92,13 @@ public class ServerDataService extends IntentService {
 		if (intent != null) {
 			try {
 				final String action = intent.getAction();
-				hash= intent.getStringExtra("hash");
+				hash = intent.getStringExtra("hash");
 				writeLog(String.format("ServerDataService: localDbExchange received hash: %s", hash));
 				if (ACTION_QUERY_SERVER.equals(action)) {
 					if (MainActivity.dbExchange != null && (MainActivity.dbExchange.hash.compareTo(hash) == 0)) {
 						MainActivity.available.acquire();
 						localDbExchange.clear();
-						localDbExchange= (DataBaseExchange) MainActivity.dbExchange.clone();
+						localDbExchange = (DataBaseExchange) MainActivity.dbExchange.clone();
 						MainActivity.available.release();
 						localDbExchange.json_data_out = new JSONObject("{\"key\":\"data\"}");
 						writeLog(String.format("ServerDataService: localDbExchange received full_name: %s", localDbExchange.full_name));
@@ -119,22 +122,26 @@ public class ServerDataService extends IntentService {
 		}
 	}
 
-	/** Handle action QueryServer in the provided background thread with the provided parameters. */
+	/**
+	 * Handle action QueryServer in the provided background thread with the provided parameters.
+	 */
 	private void handleActionQueryServer(String response) throws InterruptedException, CloneNotSupportedException, JSONException {
 		MainActivity.available.acquire();
 		Intent broadcastIntent = new Intent();
 		broadcastIntent.setAction(MainActivity.ResponseReceiver.ACTION_RESP);
 		broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
 		MainActivity.dbExchange.clear();
-		MainActivity.dbExchange= (DataBaseExchange) localDbExchange.clone();
+		MainActivity.dbExchange = (DataBaseExchange) localDbExchange.clone();
 		MainActivity.available.release();
 		broadcastIntent.putExtra(PARAM_OUT_MSG, response);
 		sendBroadcast(broadcastIntent);
 	}
 
-	/** Handle action ReportStatus in the provided background thread with the provided parameters. */
+	/**
+	 * Handle action ReportStatus in the provided background thread with the provided parameters.
+	 */
 	private void handleActionReportStatus(String param1, String param2) {
-		String response= "<msg>message FROM ServerDataService: data from handleActionReportStatus.</msg>";
+		String response = "<msg>message FROM ServerDataService: data from handleActionReportStatus.</msg>";
 		Intent broadcastIntent = new Intent();
 		broadcastIntent.setAction(MainActivity.ResponseReceiver.ACTION_RESP);
 		broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
@@ -143,8 +150,8 @@ public class ServerDataService extends IntentService {
 	}
 
 	protected synchronized DataBaseExchange doExchange(DataBaseExchange dbEx) throws JSONException {
-		int json_sz= dbEx.json_data_in.toString().length();
-		int dbgidx=0;
+		int json_sz = dbEx.json_data_in.toString().length();
+		int dbgidx = 0;
 		dbEx.json_data_in.put("json_size", json_sz);
 		HttpURLConnection httpConnection;
 		try {
@@ -153,7 +160,7 @@ public class ServerDataService extends IntentService {
 		} catch (IOException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange: %d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
-			dbEx.error_no= dbgidx;
+			dbEx.error_no = dbgidx;
 			return dbEx;
 		}
 		try {
@@ -167,12 +174,12 @@ public class ServerDataService extends IntentService {
 		} catch (ProtocolException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
-			dbEx.error_no= dbgidx;
+			dbEx.error_no = dbgidx;
 			return dbEx;
 		}
 		int delay;
 		try {
-			delay=0;
+			delay = 0;
 			OutputStream os;
 			os = httpConnection.getOutputStream();
 			BufferedWriter br;
@@ -186,7 +193,7 @@ public class ServerDataService extends IntentService {
 		} catch (IOException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
-			dbEx.error_no= dbgidx;
+			dbEx.error_no = dbgidx;
 			httpConnection.disconnect();
 			e.printStackTrace();
 			return dbEx;
@@ -196,18 +203,17 @@ public class ServerDataService extends IntentService {
 		} catch (IOException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
-			dbEx.error_no= dbgidx;
+			dbEx.error_no = dbgidx;
 			httpConnection.disconnect();
 			e.printStackTrace();
 			return dbEx;
 		}
 		try {
-			InputStream is= httpConnection.getInputStream();
-			InputStreamReader isr=new InputStreamReader(is);
-			BufferedReader in= new BufferedReader(isr);
+			InputStream is = httpConnection.getInputStream();
+			InputStreamReader isr = new InputStreamReader(is);
+			BufferedReader in = new BufferedReader(isr);
 			String inputLine;
 			JSONObject json_data;
-			json_data = new JSONObject("{\"key\":\"data\"}");
 			StringBuilder sb = new StringBuilder();
 			while ((inputLine = in.readLine()) != null) {
 				sb.append(inputLine);
@@ -222,27 +228,29 @@ public class ServerDataService extends IntentService {
 			is.close();
 			isr.close();
 			in.close();
-		} catch ( IOException | JSONException e) {
+		} catch (IOException | JSONException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
-			dbEx.error_no= dbgidx;
+			dbEx.error_no = dbgidx;
 			httpConnection.disconnect();
 			e.printStackTrace();
 			return dbEx;
 		}
 		try {
 			if (dbEx.error_no > 0) {
-				delay= 80000;
+				delay = 80000;
+				dbEx.setError_no(0);
 			}
-			if (delay>0) {
+			if (delay > 0) {
 				Thread.sleep(delay);
 			}
 		} catch (InterruptedException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
 			dbgidx++;
-			dbEx.error_no= dbgidx;
+			dbEx.error_no = dbgidx;
 			httpConnection.disconnect();
 			e.printStackTrace();
-		} return dbEx;
+		}
+		return dbEx;
 	}
 }

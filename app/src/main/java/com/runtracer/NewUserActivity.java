@@ -238,6 +238,16 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	boolean calculateBMI() throws ParseException {
 		boolean result;
 		getValues(false);
+
+		writeLog(String.format(Locale.US, "calculateBMI():retrievedHeight: %s", retrievedHeight));
+		writeLog(String.format(Locale.US, "calculateBMI():retrievedHeight_v: %f", retrievedHeight_v));
+
+		writeLog(String.format(Locale.US, "calculateBMI():retrievedHipCircumference: %s", retrievedHipCircumference));
+		writeLog(String.format(Locale.US, "calculateBMI():retrievedHipCircumference_v: %f", retrievedHipCircumference_v));
+
+		writeLog(String.format(Locale.US, "calculateBMI():retrievedWeight: %s", retrievedWeight));
+		writeLog(String.format(Locale.US, "calculateBMI():retrievedWeight_v: %f", retrievedWeight_v));
+
 		if (retrievedHeight_v > 0 && retrievedHipCircumference_v > 0 && retrievedWeight_v > 0) {
 			// Metric: (HC / (HM)1.5) - 18
 			// BAI = Body Adiposity Index
@@ -257,8 +267,8 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		mUserDateofBirth.setText(datePicked);
 		try {
 			if (calculateBMI()) {
-				mUserBodyMassIndex.setText(String.format("%.2f", this.bmi));
-				mUserBodyAdiposityIndex.setText(String.format("%.2f", this.bai));
+				mUserBodyMassIndex.setText(String.format(Locale.getDefault(), "%.2f", this.bmi));
+				mUserBodyAdiposityIndex.setText(String.format(Locale.getDefault(), "%.2f", this.bai));
 			}
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -290,7 +300,8 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		}
 
 		public void onDateSet(DatePicker view, int year, int month, int day) {
-			datePicked = String.format(Locale.US, "%d-%d-%d ", year, month + 1, day);
+			datePicked = String.format(Locale.getDefault(), "%d-%d-%d ", year, month + 1, day);
+			writeLog(String.format(Locale.US, "onDateSet: %d-%d-%d ", year, month + 1, day));
 		}
 
 		public void writeLog(String msg) {
@@ -304,10 +315,10 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		DatePickerFragment newFragment = new DatePickerFragment();
 		newFragment.show(getSupportFragmentManager(), "datePicker");
 		retrievedDOB = datePicked;
-
+		writeLog(String.format(Locale.US, "showDatePickerDialog: retrievedDOB  %s ", datePicked));
 		SimpleDateFormat l_format = new SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault());
-		retrievedDateOfBirth= l_format.parse(datePicked);
-
+		retrievedDateOfBirth = l_format.parse(datePicked);
+		writeLog(String.format(Locale.US, "showDatePickerDialog: retrievedDateOfBirth: %s ", retrievedDateOfBirth));
 		mUserDateofBirth.setText(datePicked);
 	}
 
@@ -347,22 +358,32 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	}
 
 	private boolean isAgeValid() {
-
 		Date dateOfBirth = retrievedDateOfBirth;
-		Date dateOfToday= new Date();
-
+		Date dateOfToday = new Date();
 		int age_v;
-		Calendar calendar = Calendar.getInstance();
-		Calendar today= Calendar.getInstance();
-		calendar.setTime(dateOfBirth);
-		today.setTime(dateOfToday);
-		age_v= calendar.compareTo(today);
+		Calendar dob= Calendar.getInstance();
+		Calendar today = Calendar.getInstance();
 
-		writeLog(String.format(Locale.US,"retrievedDateOfBirth: %s", retrievedDateOfBirth.toString()));
-		writeLog(String.format(Locale.US,"dateOfToday: %s", dateOfToday.toString()));
-		writeLog(String.format(Locale.US,"dateOfBirth: %s", dateOfBirth.toString()));
-		writeLog(String.format(Locale.US,"age: %d", age_v));
+		if (dateOfBirth != null && dob!= null) {
+			dob.setTime(dateOfBirth);
+			today.setTime(dateOfToday);
+			if ( today.get(Calendar.MONTH) - dob.get(Calendar.MONTH) >0){
+				age_v = today.get(Calendar.YEAR)-dob.get(Calendar.YEAR);
+			} else {
+				age_v = today.get(Calendar.YEAR)-dob.get(Calendar.YEAR) -1;
+			}
 
+			writeLog(String.format(Locale.US, "isAgeValid: dob: %s", dob.toString()));
+			writeLog(String.format(Locale.US, "isAgeValid: today: %s", today.toString()));
+
+			writeLog(String.format(Locale.US, "isAgeValid: retrievedDateOfBirth: %s", retrievedDateOfBirth.toString()));
+			writeLog(String.format(Locale.US, "isAgeValid: dateOfToday: %s", dateOfToday.toString()));
+			writeLog(String.format(Locale.US, "isAgeValid: dateOfBirth: %s", dateOfBirth.toString()));
+			writeLog(String.format(Locale.US, "isAgeValid: age: %d", age_v));
+		} else {
+			writeLog(String.format(Locale.US, "retrievedDateOfBirth!=null: %b", retrievedDateOfBirth!=null));
+			age_v = 0;
+		}
 		return age_v > 13;
 	}
 
@@ -434,11 +455,18 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		retrievedFat = String.valueOf(mUserFat.getText());
 		retrievedTargetFat = String.valueOf(mUserTargetFat.getText());
 
-		lretrievedFat_v = nf.parse(retrievedFat).doubleValue();
-		lretrievedTargetFat_v = nf.parse(retrievedTargetFat).doubleValue();
+		writeLog(String.format(Locale.US, "retrievedFat: %s", retrievedFat ));
+		writeLog(String.format(Locale.US, "retrievedTargetFat: %s", retrievedTargetFat));
+		if (retrievedFat!=null && retrievedFat.length()>0) {
+			lretrievedFat_v = nf.parse(retrievedFat).doubleValue();
+			writeLog(String.format(Locale.US, "lretrievedFat_v: %f", lretrievedFat_v ));
+		}
+		if (retrievedTargetFat!=null && retrievedTargetFat.length()>0) {
+			lretrievedTargetFat_v = nf.parse(retrievedTargetFat).doubleValue();
+			writeLog(String.format(Locale.US, "lretrievedTargetFat_v: %f", lretrievedTargetFat_v));
+		}
 
 		writeLog(String.format(Locale.US, "isAgeValid: %b", isAgeValid()));
-
 		if (isAgeValid() && isWeightValid(retrievedWeight) && isHeightValid(retrievedHeight) && isHipCircumferenceValid(retrievedHipCircumference) && isWeightValid(retrievedTargetWeight)) {
 			lretrievedHeight_v = nf.parse(retrievedHeight).doubleValue();
 			lretrievedHipCircumference_v = nf.parse(retrievedHipCircumference).doubleValue();
@@ -519,7 +547,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 				return (false);
 			}
 		} else {
-			writeLog(String.format("getValues: false"));
+			writeLog(String.format(Locale.US, "getValues: false"));
 		}
 		return (true);
 	}
@@ -528,7 +556,6 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	public void onClick(View v) {
 		switch (v.getId()) {
 			case R.id.sign_up_button:
-				Snackbar.make(v, "Please check your email and setup your password from the link provided.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 				try {
 					if (getValues(true)) {
 						Intent data = new Intent();
@@ -537,6 +564,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 						data.putExtra("data", returnValue);
 						setResult(RESULT_OK, data);
 						this.finish();
+						Snackbar.make(v, "Please check your email and setup your password from the link provided.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 					}
 				} catch (ParseException e) {
 					e.printStackTrace();
@@ -574,6 +602,6 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-		//Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 }

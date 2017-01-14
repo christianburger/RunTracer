@@ -24,7 +24,6 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -100,6 +99,7 @@ public class ProfileActivity extends AppCompatActivity implements OnClickListene
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
 			String value = extras.getString("user_info");
+			writeLog(String.format(Locale.US, "ProfileActivity: onCreate: value: %s", value));
 			try {
 				userData= new JSONObject(value);
 				retrievedFullName= userData.getString("full_name");
@@ -177,7 +177,6 @@ public class ProfileActivity extends AppCompatActivity implements OnClickListene
 		}
 	}
 
-
 	public static class DatePickerFragment extends DialogFragment implements DatePickerDialog.OnDateSetListener {
 
 		private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
@@ -208,7 +207,7 @@ public class ProfileActivity extends AppCompatActivity implements OnClickListene
 
 		public void writeLog(String msg) {
 			String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new java.util.Date()).toString());
-			//Log.e(TAG, date + ": " + msg);
+			Log.e(TAG, date + ": " + msg);
 		}
 	}
 
