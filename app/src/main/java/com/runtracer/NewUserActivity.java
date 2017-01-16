@@ -23,6 +23,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.runtracer.interfaces.OnDateSetListener;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -38,7 +40,7 @@ import java.util.regex.Pattern;
 import static android.view.View.OnClickListener;
 import static android.view.View.OnTouchListener;
 
-public class NewUserActivity extends AppCompatActivity implements OnClickListener, OnTouchListener, TextView.OnEditorActionListener {
+public class NewUserActivity extends AppCompatActivity implements OnDateSetListener, OnClickListener, OnTouchListener, TextView.OnEditorActionListener {
 
 	private final NumberFormat nf = NumberFormat.getNumberInstance(Locale.getDefault());
 
@@ -125,7 +127,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 			String value = extras.getString("user_info");
 			try {
 				userData = new JSONObject(value);
-				writeLog(String.format("json received: %s", userData));
+				writeLog(String.format(Locale.US, "NewUserActivity: json received: %s", userData));
 				if (!userData.isNull("full_name")) {
 					retrievedFullName = userData.getString("full_name");
 				} else {
@@ -137,7 +139,15 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 					retrievedEmail = "";
 				}
 				if (!userData.isNull("metric")) {
-					retrievedMetricSystem = (userData.getInt("metric") == 1);
+					if (userData.get("metric") instanceof Boolean) {
+						retrievedMetricSystem = (userData.getBoolean("metric"));
+					}
+					if (userData.get("metric") instanceof Integer) {
+						retrievedMetricSystem = (userData.getInt("metric") == 1);
+					}
+					if (userData.get("metric") instanceof String) {
+						retrievedMetricSystem = Integer.parseInt((userData.getString("metric"))) == 1;
+					}
 				}
 				if (retrievedFullName.compareTo("empty") == 0) {
 					retrievedFullName = "";
@@ -166,6 +176,8 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		mFullName = (EditText) findViewById(R.id.full_name);
 		mUserEmail = (EditText) findViewById(R.id.email);
 		mUserDateofBirth = (Button) findViewById(R.id.date_picker_button);
+		mUserDateofBirth.setText(retrievedDOB);
+
 		mUserGender = (Switch) findViewById(R.id.user_gender_value);
 		mUserGender.setOnClickListener(this);
 		mUserHeight = (EditText) findViewById(R.id.user_height);
@@ -283,8 +295,30 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		return false;
 	}
 
-	public static class DatePickerFragment extends DialogFragment
-		implements DatePickerDialog.OnDateSetListener {
+	@Override
+	public void onDateSet(Date date) {
+		SimpleDateFormat l_format = new SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault());
+		retrievedDateOfBirth = date;
+		writeLog(String.format(Locale.US, "NewUserActivity: LISTENER RECEIVED: date: %s >> retrievedDateOfBirth: %s ",date.toString(), retrievedDateOfBirth));
+		mUserDateofBirth.setText(l_format.format(date));
+	}
+
+	@Override
+	public void onDateSet(String date) {
+
+	}
+
+	public static class DatePickerFragment extends DialogFragment implements DatePickerDialog.OnDateSetListener {
+
+		public OnDateSetListener onDateSetListener;
+
+		public OnDateSetListener getOnDateSetListener() {
+			return onDateSetListener;
+		}
+
+		public void setOnDateSetListener(OnDateSetListener onDateSetListener) {
+			this.onDateSetListener = onDateSetListener;
+		}
 
 		@NonNull
 		@Override
@@ -300,8 +334,17 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		}
 
 		public void onDateSet(DatePicker view, int year, int month, int day) {
+			Date picked;
 			datePicked = String.format(Locale.getDefault(), "%d-%d-%d ", year, month + 1, day);
 			writeLog(String.format(Locale.US, "onDateSet: %d-%d-%d ", year, month + 1, day));
+
+			SimpleDateFormat l_format = new SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault());
+			try {
+				picked = l_format.parse(datePicked);
+				onDateSetListener.onDateSet(picked);
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
 		}
 
 		public void writeLog(String msg) {
@@ -313,6 +356,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 	public void showDatePickerDialog(View v) throws ParseException {
 		//DialogFragment newFragment = new DatePickerFragment();
 		DatePickerFragment newFragment = new DatePickerFragment();
+		newFragment.setOnDateSetListener(this);
 		newFragment.show(getSupportFragmentManager(), "datePicker");
 		retrievedDOB = datePicked;
 		writeLog(String.format(Locale.US, "showDatePickerDialog: retrievedDOB  %s ", datePicked));
@@ -361,16 +405,16 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		Date dateOfBirth = retrievedDateOfBirth;
 		Date dateOfToday = new Date();
 		int age_v;
-		Calendar dob= Calendar.getInstance();
+		Calendar dob = Calendar.getInstance();
 		Calendar today = Calendar.getInstance();
 
-		if (dateOfBirth != null && dob!= null) {
+		if (dateOfBirth != null && dob != null) {
 			dob.setTime(dateOfBirth);
 			today.setTime(dateOfToday);
-			if ( today.get(Calendar.MONTH) - dob.get(Calendar.MONTH) >0){
-				age_v = today.get(Calendar.YEAR)-dob.get(Calendar.YEAR);
+			if (today.get(Calendar.MONTH) - dob.get(Calendar.MONTH) > 0) {
+				age_v = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR);
 			} else {
-				age_v = today.get(Calendar.YEAR)-dob.get(Calendar.YEAR) -1;
+				age_v = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR) - 1;
 			}
 
 			writeLog(String.format(Locale.US, "isAgeValid: dob: %s", dob.toString()));
@@ -381,7 +425,7 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 			writeLog(String.format(Locale.US, "isAgeValid: dateOfBirth: %s", dateOfBirth.toString()));
 			writeLog(String.format(Locale.US, "isAgeValid: age: %d", age_v));
 		} else {
-			writeLog(String.format(Locale.US, "retrievedDateOfBirth!=null: %b", retrievedDateOfBirth!=null));
+			writeLog(String.format(Locale.US, "retrievedDateOfBirth!=null: %b", retrievedDateOfBirth != null));
 			age_v = 0;
 		}
 		return age_v > 13;
@@ -455,13 +499,13 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 		retrievedFat = String.valueOf(mUserFat.getText());
 		retrievedTargetFat = String.valueOf(mUserTargetFat.getText());
 
-		writeLog(String.format(Locale.US, "retrievedFat: %s", retrievedFat ));
+		writeLog(String.format(Locale.US, "retrievedFat: %s", retrievedFat));
 		writeLog(String.format(Locale.US, "retrievedTargetFat: %s", retrievedTargetFat));
-		if (retrievedFat!=null && retrievedFat.length()>0) {
+		if (retrievedFat != null && retrievedFat.length() > 0) {
 			lretrievedFat_v = nf.parse(retrievedFat).doubleValue();
-			writeLog(String.format(Locale.US, "lretrievedFat_v: %f", lretrievedFat_v ));
+			writeLog(String.format(Locale.US, "lretrievedFat_v: %f", lretrievedFat_v));
 		}
-		if (retrievedTargetFat!=null && retrievedTargetFat.length()>0) {
+		if (retrievedTargetFat != null && retrievedTargetFat.length() > 0) {
 			lretrievedTargetFat_v = nf.parse(retrievedTargetFat).doubleValue();
 			writeLog(String.format(Locale.US, "lretrievedTargetFat_v: %f", lretrievedTargetFat_v));
 		}
@@ -534,7 +578,9 @@ public class NewUserActivity extends AppCompatActivity implements OnClickListene
 				userData.put("email", retrievedEmail);
 				userData.put("gender", retrievedGender);
 				userData.put("dob", retrievedDOB);
+				userData.put("birthday", retrievedDOB);
 				userData.put("fat", lretrievedFat_v);
+				userData.put("fat_percentage", lretrievedFat_v);
 				userData.put("target_fat", lretrievedTargetFat_v);
 				userData.put("height", retrievedHeight_v);
 				userData.put("hip_circumference", retrievedHipCircumference_v);

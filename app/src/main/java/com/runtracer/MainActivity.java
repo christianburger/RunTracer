@@ -403,12 +403,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		try {
-			changeUserData(user_bio.createJSON());
-		} catch (JSONException | ParseException | NoSuchAlgorithmException | IOException | InterruptedException e) {
-			e.printStackTrace();
-		}
-		writeLog("onPause()");
+		JSONObject json = user_bio.createJSON();
+		writeLog(String.format(Locale.US, "onPause(): CALLING changeUserData: json: %s", json));
+		changeUserData(json);
 	}
 
 	protected String getPackageDirectory() throws PackageManager.NameNotFoundException {
@@ -424,16 +421,14 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		try {
-			changeUserData(user_bio.createJSON());
-		} catch (JSONException | ParseException | NoSuchAlgorithmException | IOException | InterruptedException e) {
-			e.printStackTrace();
-		}
+		JSONObject json = user_bio.createJSON();
+		writeLog(String.format(Locale.US, "onDestroy(): CALLING changeUserData: json: %s", json));
+		changeUserData(json);
 		this.writeFile();
 		if (mBluetoothLeService != null && isBluetoothLeRegistered) {
 			unregisterReceiver(mGattUpdateReceiver);
 		}
-		writeLog("onDestroy()");
+		writeLog(String.format(Locale.US, "onDestroy(): %s", json));
 		updateUI();
 	}
 
@@ -471,7 +466,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	public void newUser(JSONObject userInfo) throws JSONException {
 		if (userInfo.isNull("metric")) {
-			userInfo.accumulate("metric", user_bio.bMetricSystem ? 1 : 0);
+			userInfo.put("metric", user_bio.bMetricSystem ? 1 : 0);
 		}
 		writeLog(String.format(Locale.US, "userInfo: %s", userInfo.toString()));
 		Intent intent = new Intent(this, NewUserActivity.class);
@@ -480,22 +475,24 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	public void userProfile(JSONObject userInfo) {
+		writeLog(String.format(Locale.US, "userProfile: 00 userInfo: %s", userInfo));
 		try {
-			userInfo.accumulate("is_signed_in", mIsSignedIn);
-			userInfo.accumulate("full_name", user_bio.full_name);
-			userInfo.accumulate("email", user_bio.email);
-			userInfo.accumulate("gender", user_bio.gender);
-			userInfo.accumulate("birthday", user_bio.birthday);
-			userInfo.accumulate("height", user_bio.height_v);
-			userInfo.accumulate("hip_circumference", user_bio.hip_circumference_v);
-			userInfo.accumulate("weight", user_bio.current_weight_v);
-			userInfo.accumulate("target_weight", user_bio.target_weight_v);
-			userInfo.accumulate("target_fat", user_bio.target_fat_v);
-			userInfo.accumulate("fat_percentage", user_bio.current_fat_v);
-			userInfo.accumulate("metric", user_bio.bMetricSystem ? 1 : 0);
+			userInfo.put("is_signed_in", mIsSignedIn);
+			userInfo.put("full_name", user_bio.full_name);
+			userInfo.put("email", user_bio.email);
+			userInfo.put("gender", user_bio.gender);
+			userInfo.put("birthday", user_bio.birthday);
+			userInfo.put("height", user_bio.height_v);
+			userInfo.put("hip_circumference", user_bio.hip_circumference_v);
+			userInfo.put("weight", user_bio.current_weight_v);
+			userInfo.put("target_weight", user_bio.target_weight_v);
+			userInfo.put("target_fat", user_bio.target_fat_v);
+			userInfo.put("fat_percentage", user_bio.current_fat_v);
+			userInfo.put("metric", user_bio.bMetricSystem ? 1 : 0);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
+		writeLog(String.format(Locale.US, "userProfile: 01 userInfo: %s", userInfo));
 		Intent intent = new Intent(this, ProfileActivity.class);
 		intent.putExtra("user_info", userInfo.toString());
 		startActivityForResult(intent, USER_PROFILE);
@@ -809,36 +806,43 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		return 0;
 	}
 
-	private int changeUserData(JSONObject jsonUserData) throws MalformedURLException, InterruptedException, JSONException {
+	//Database method
+	private int changeUserData(JSONObject jsonUserData) {
 		boolean dataok = false;
 		int retval = 0;
-		if (isServerReady() && (mIsSignedIn || mIsEmailSignedIn)) {
-			available.acquire();
-			dbExchange.clear();
-			dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-			dbExchange.command = "change_user_data";
-			dbExchange.json_data_in.accumulate("command", dbExchange.command);
-			dbExchange.json_data_in.accumulate("full_name", jsonUserData.get("full_name"));
-			dbExchange.json_data_in.accumulate("email", jsonUserData.get("email"));
-			dbExchange.json_data_in.accumulate("logged", "true");
-			dbExchange.json_data_in.accumulate("dob", jsonUserData.get("dob"));
-			dbExchange.json_data_in.accumulate("gender", jsonUserData.get("gender"));
-			dbExchange.json_data_in.accumulate("height", jsonUserData.get("height"));
-			dbExchange.json_data_in.accumulate("hip_circumference", jsonUserData.get("hip_circumference"));
-			dbExchange.json_data_in.accumulate("weight", jsonUserData.get("weight"));
-			dbExchange.json_data_in.accumulate("target_weight", jsonUserData.get("target_weight"));
-			dbExchange.json_data_in.accumulate("fat", jsonUserData.get("fat"));
-			dbExchange.json_data_in.accumulate("target_fat", jsonUserData.get("target_fat"));
-			dbExchange.json_data_in.accumulate("metric", user_bio.bMetricSystem ? 1 : 0);
-			dbExchange.json_data_in.accumulate("recovery_heart_rate", user_bio.recovery_hr);
-			dbExchange.json_data_in.accumulate("resting_heart_rate", user_bio.resting_hr);
-			String hash = dbExchange.getHash();
-			available.release();
-			for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-				dataok = sendServerDataServiceRequest(hash);
+		try {
+			writeLog(String.format(Locale.US, "changeUserData: jsonUserData: %s", jsonUserData));
+			if (isServerReady() && (mIsSignedIn || mIsEmailSignedIn)) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
+				dbExchange.command = "change_user_data";
+				dbExchange.json_data_in.accumulate("command", dbExchange.command);
+				dbExchange.json_data_in.accumulate("full_name", jsonUserData.get("full_name"));
+				dbExchange.json_data_in.accumulate("email", jsonUserData.get("email"));
+				dbExchange.json_data_in.accumulate("logged", "true");
+				dbExchange.json_data_in.accumulate("dob", jsonUserData.get("dob"));
+				dbExchange.json_data_in.accumulate("gender", jsonUserData.get("gender"));
+				dbExchange.json_data_in.accumulate("height", jsonUserData.get("height"));
+				dbExchange.json_data_in.accumulate("hip_circumference", jsonUserData.get("hip_circumference"));
+				dbExchange.json_data_in.accumulate("weight", jsonUserData.get("weight"));
+				dbExchange.json_data_in.accumulate("target_weight", jsonUserData.get("target_weight"));
+				dbExchange.json_data_in.accumulate("fat", jsonUserData.get("fat"));
+				dbExchange.json_data_in.accumulate("target_fat", jsonUserData.get("target_fat"));
+				dbExchange.json_data_in.accumulate("metric", user_bio.bMetricSystem ? 1 : 0);
+				dbExchange.json_data_in.accumulate("recovery_heart_rate", user_bio.recovery_hr);
+				dbExchange.json_data_in.accumulate("resting_heart_rate", user_bio.resting_hr);
+				String hash = dbExchange.getHash();
+				available.release();
+				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.json_data_in));
+				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
+					dataok = sendServerDataServiceRequest(hash);
+				}
+			} else {
+				retval = -1;
 			}
-		} else {
-			retval = -1;
+		} catch (JSONException | MalformedURLException | InterruptedException e) {
+			e.printStackTrace();
 		}
 		return retval;
 	}
@@ -974,7 +978,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					}
 				}
 			} catch (Exception e) {
-				writeLog(e.toString());
+				e.printStackTrace();
 			}
 		}
 		if (requestCode == USER_PROFILE && resultCode == RESULT_OK) {
@@ -987,10 +991,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					if (userData.getString("user_data") != null) {
 						jsonUserData = new JSONObject(userData.getString("user_data"));
 						user_bio.writeJSON(jsonUserData);
+						writeLog(String.format(Locale.US, "onActivityResult: requestCode==USER_PROFILE: CALLING changeUserData: json: %s", jsonUserData));
+						changeUserData(jsonUserData);
 					}
 				}
 			} catch (Exception e) {
-				writeLog(e.toString());
+				e.printStackTrace();
 			}
 		}
 		if (requestCode == LOGIN_USER_DATA && resultCode == RESULT_OK) {
@@ -1007,7 +1013,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					}
 				}
 			} catch (Exception e) {
-				writeLog(e.toString());
+				e.printStackTrace();
 			}
 		}
 		if (requestCode == RUN_USER_DATA && resultCode == RESULT_OK && mIsAuthenticated) {
@@ -1041,7 +1047,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
 				bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 			} catch (Exception e) {
-				e.getStackTrace();
+				e.printStackTrace();
 			}
 		}
 	}
@@ -1095,11 +1101,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				jsonData.accumulate("logged", "true");
 			} catch (JSONException e) {
 				writeLog("onConnected:01: " + "JSONException: " + e.toString());
+				e.printStackTrace();
 			}
 			authUser(jsonData);
 			updateUI();
 		} catch (Exception e) {
 			e.fillInStackTrace();
+			e.printStackTrace();
 		}
 	}
 
@@ -1124,6 +1132,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				} catch (IntentSender.SendIntentException e) {
 					mIsResolving = false;
 					mGoogleApiClient.connect();
+					e.printStackTrace();
 				}
 			} else {
 				// Could not resolve the connection result, show the user an error dialog.
@@ -1184,12 +1193,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_profile_button:
-				try {
-					userinfo = new JSONObject("{\"key\":\"data\"}");
-					this.userProfile(userinfo);
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
+				userinfo = user_bio.createJSON();
+				this.userProfile(userinfo);
 				break;
 
 			case R.id.email_login:
@@ -1392,11 +1397,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		public void onReceive(Context context, Intent intent) {
 			String response;
 			response = intent.getStringExtra("param_out_msg");
-			writeLog("Hey: ResponseReceiver: in: " + dbExchange.json_data_in);
-			writeLog("Hey: ResponseReceiver: out: " + dbExchange.json_data_out);
+			writeLog("MainActivity: ResponseReceiver: onReceive: json_data_in: " + dbExchange.json_data_in);
+			writeLog("MainActivity: ResponseReceiver: onReceive json_data_out: " + dbExchange.json_data_out);
 
 			if (response.compareTo(lastHash) == 0) {
 				dbExchange.pending = false;
+			} else {
+				writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: onReceive: response.compareTo(lastHash) == 0: %b ", (response.compareTo(lastHash) == 0)));
 			}
 			try {
 				processResponse(dbExchange);
@@ -1509,6 +1516,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						sender = dbEx.json_data_out.getInt("sender");
 					}
 				} catch (JSONException e) {
+					writeLog(String.format(Locale.US, "processResponse: Exception 01: %s", e.toString()));
 					e.printStackTrace();
 					return;
 				}
@@ -1520,10 +1528,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (!dbEx.json_data_out.isNull("created") && !dbEx.json_data_out.isNull("sender")) {
 					user_bio.created = dbEx.json_data_out.get("created").toString();
 				}
-				if (!dbEx.json_data_out.isNull("validated") && !dbEx.json_data_out.isNull("sender")) {
+				if (!dbEx.json_data_out.isNull("validated") && dbEx.json_data_out.get("validated") instanceof Integer && !dbEx.json_data_out.isNull("sender")) {
 					bUserValidated = 1 == dbEx.json_data_out.getInt("validated");
 				}
 			} catch (JSONException e) {
+				writeLog(String.format(Locale.US, "processResponse: Exception 02: %s", e.toString()));
 				e.printStackTrace();
 			}
 			user_bio.getValues();
@@ -1538,6 +1547,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				Snackbar.make(findViewById(android.R.id.content), "User email not validated, check your email and create a password.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 			}
 
+			writeLog(String.format(Locale.US, "MainActivity: processResponse: before switch: sender: %d", sender));
+
 			switch (sender) {
 				case get_user_data:
 					break;
@@ -1546,23 +1557,19 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					break;
 
 				case change_user_data:
-					break;
+					writeLog(String.format(Locale.US, "processResponse: change_user_data: mIsAuthenticated; %s", mIsAuthenticated));
+					writeLog(String.format(Locale.US, "processResponse: change_user_data: mIsEmailSignedIn: %s", mIsEmailSignedIn));
 
 				case auth_user:
 					if (bUserAlreadyCreated && bUserStatusReady) {
 						mIsEmailSignedIn = !mIsSignedIn;
 						mIsAuthenticated = true;
-						try {
-							user_bio.writeJSON(dbEx.json_data_out);
-							mMetricSystem.setChecked(user_bio.bMetricSystem);
-							writeLog(String.format(Locale.US, "processResponse: auth_user: %s", user_bio.email));
-							writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
-							getRunData(!isUpdated);
-							updateUI();
-
-						} catch (JSONException | NoSuchAlgorithmException | IOException | ParseException | InterruptedException e) {
-							e.printStackTrace();
-						}
+						user_bio.writeJSON(dbEx.json_data_out);
+						mMetricSystem.setChecked(user_bio.bMetricSystem);
+						writeLog(String.format(Locale.US, "processResponse: auth_user: %s", user_bio.email));
+						writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
+						getRunData(!isUpdated);
+						updateUI();
 					} else {
 						if (!bUserAlreadyCreated) {
 							JSONObject jsonData;
@@ -1585,6 +1592,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 								writeLog(String.format(Locale.US, "jsonData: %s", jsonData.toString()));
 								newUser(jsonData);
 							} catch (JSONException e) {
+								writeLog(String.format(Locale.US, "processResponse: Exception 03: %s", e.toString()));
 								e.printStackTrace();
 							}
 						}
@@ -1594,19 +1602,22 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				case send_run_data:
 					if (mIsAuthenticated) {
 						getRunData(true);
-						changeUserData(user_bio.createJSON());
+						JSONObject json= user_bio.createJSON();
+						writeLog(String.format(Locale.US, "processResponse: send_run_data: CALLING changeUserData: json: %s", json));
+						changeUserData(json);
 					}
 					break;
 
 				case get_run_ids:
 					int max_run_history_sz = 2000;
 					for (int i = 0; i < max_run_history_sz; i++) {
-						String key = (String.format("value_%d", i));
+						String key = (String.format(Locale.US, "value_%d", i));
 						if (!dbEx.json_data_out.isNull(key)) {
 							try {
-								String value = (String) dbEx.json_data_out.get(String.format("value_%d", i));
+								String value = (String) dbEx.json_data_out.get(String.format(Locale.US, "value_%d", i));
 								getRunInfo(Integer.parseInt(value));
 							} catch (JSONException | MalformedURLException | InterruptedException e) {
+								writeLog(String.format(Locale.US, "processResponse: Exception 03: %s", e.toString()));
 								e.printStackTrace();
 							}
 						} else {
@@ -1622,6 +1633,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						runid_v = Integer.parseInt(runid);
 						updateRunInfo(runid_v, dbEx.json_data_out);
 					} catch (JSONException | ParseException | IOException | NoSuchAlgorithmException e) {
+						writeLog(String.format(Locale.US, "processResponse: Exception 04: %s", e.toString()));
 						e.printStackTrace();
 					}
 					break;
@@ -1631,6 +1643,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						updateAllRunInfo(dbEx.json_data_out);
 						updateUI();
 					} catch (JSONException | ParseException | IOException | NoSuchAlgorithmException e) {
+						writeLog(String.format(Locale.US, "processResponse: Exception 05: %s", e.toString()));
 						e.printStackTrace();
 					}
 					break;
@@ -1696,10 +1709,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private class RetrieveTokenTask extends AsyncTask<String, Void, String> {
 		private static final int REQ_SIGN_IN_REQUIRED = 11910;
 
-		@Override
 		protected String doInBackground(String... params) {
 		        /*
-            String accountName = params[0];
+		        String accountName = params[0];
             String scopes = "oauth2:profile email";
             //String scopes = "oauth2:email " + Scopes.PLUS_LOGIN;
             String token = null;

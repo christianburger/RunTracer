@@ -221,7 +221,7 @@ public class ServerDataService extends IntentService {
 				Iterator<String> itr = json_data.keys();
 				while (itr.hasNext()) {
 					String key = itr.next();
-					dbEx.json_data_out.accumulate(key, json_data.get(key));
+					dbEx.json_data_out.put(key, json_data.get(key));
 				}
 			}
 			httpConnection.disconnect();
