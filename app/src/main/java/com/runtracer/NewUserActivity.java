@@ -10,7 +10,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -349,7 +348,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 		public void writeLog(String msg) {
 			String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-			Log.e(TAG, date + ": " + msg);
+//			Log.e(TAG, date + ": " + msg);
 		}
 	}
 
@@ -648,6 +647,6 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-		Log.e(TAG, date + ": " + msg);
+//		Log.e(TAG, date + ": " + msg);
 	}
 }

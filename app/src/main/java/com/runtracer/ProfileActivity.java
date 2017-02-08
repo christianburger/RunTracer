@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -243,7 +242,7 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 
 		public void writeLog(String msg) {
 			String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new java.util.Date()).toString());
-			Log.e(TAG, date + ": " + msg);
+//			Log.e(TAG, date + ": " + msg);
 		}
 	}
 
@@ -707,6 +706,6 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-		Log.e(TAG, date + ": " + msg);
+//		Log.e(TAG, date + ": " + msg);
 	}
 }

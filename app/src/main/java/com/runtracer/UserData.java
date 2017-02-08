@@ -1,7 +1,5 @@
 package com.runtracer;
 
-import android.util.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -520,7 +518,7 @@ public class UserData implements Serializable {
 	public void writeLog(String msg) {
 		Date datenow = new Date();
 		String date = date_format.format(datenow);
-		Log.e(TAG, date + ": " + msg);
+//		Log.e(TAG, date + ": " + msg);
 	}
 
 	private void writeObject(java.io.ObjectOutputStream out)

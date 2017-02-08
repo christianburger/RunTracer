@@ -1,7 +1,6 @@
 package com.runtracer;
 
 import android.util.Base64;
-import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -165,7 +164,7 @@ public class RunData implements Serializable {
 		SimpleDateFormat datef1 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 		Date datenow = new Date();
 		String date = datef1.format(datenow);
-		Log.e(TAG, date + ": " + msg);
+//		Log.e(TAG, date + ": " + msg);
 	}
 
 	public RunData() throws JSONException {
@@ -285,10 +284,11 @@ public class RunData implements Serializable {
 			Matcher m = p.matcher(encoded_runtrace_string);
 			if (m.matches()) {
 				String encoded_runtrace_cleaned = m.group(0);
-				encoded_runtrace_cleaned.replace("\n", "").replace("\r", "");
+				encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\n", "");
+				encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\r", "");
 				objectstream = Base64.decode(encoded_runtrace_cleaned, Base64.DEFAULT);
 				this.runtrace_md5sum = md5sum(objectstream);
-				writeLog(String.format("createJSON: run_id: %d runtrace_md5sum: %s encoded_sz: %d start_date: %s", this.run_id_v, this.runtrace_md5sum, encoded_runtrace_string.length(), this.run_date_start));
+				writeLog(String.format(Locale.US, "createJSON: run_id: %d runtrace_md5sum: %s encoded_sz: %d start_date: %s", this.run_id_v, this.runtrace_md5sum, encoded_runtrace_string.length(), this.run_date_start));
 				jsonRunData.accumulate("runtrace_md5sum", this.runtrace_md5sum);
 			}
 		}

@@ -7,7 +7,6 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
@@ -287,7 +286,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-		Log.e(TAG, date + ": " + msg);
+//		Log.e(TAG, date + ": " + msg);
 	}
 
 	/**
