@@ -9,6 +9,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
@@ -179,7 +180,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new java.util.Date()).toString());
-//		Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
 	public int getActivities() {

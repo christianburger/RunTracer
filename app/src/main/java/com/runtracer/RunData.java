@@ -27,6 +27,26 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/*
+describe run_summary;
++---------------------+-------------+------+-----+---------+----------------+
+| Field               | Type        | Null | Key | Default | Extra          |
++---------------------+-------------+------+-----+---------+----------------+
+| uid                 | int(10)     | YES  |     | NULL    |                |
+| runid               | int(10)     | NO   | PRI | NULL    | auto_increment |
+| distance            | double      | YES  |     | NULL    |                |
+| gps_distance        | double      | YES  |     | NULL    |                |
+| average_speed       | double      | YES  |     | NULL    |                |
+| calories_distance   | double      | YES  |     | NULL    |                |
+| calories_heart_beat | double      | YES  |     | NULL    |                |
+| current_weight      | double      | YES  |     | NULL    |                |
+| current_fat         | double      | YES  |     | NULL    |                |
+| runtrace            | blob        | YES  |     | NULL    |                |
+| runtrace_md5sum     | varchar(80) | YES  |     | NULL    |                |
+| date_start          | datetime    | YES  |     | NULL    |                |
+| date_end            | datetime    | YES  |     | NULL    |                |
++---------------------+-------------+------+-----+---------+----------------+
+ */
 public class RunData implements Serializable {
 	private static final long serialVersionUID = 100L;
 	private static final String TAG = "rundata";

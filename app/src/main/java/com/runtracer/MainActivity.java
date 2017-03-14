@@ -31,6 +31,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.text.format.DateFormat;
 import android.text.method.LinkMovementMethod;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -1289,7 +1290,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		Date cdate;
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate = new Date()).toString());
 		String msg2 = String.format(Locale.US, "<%d>", cdate.getTime());
-//		Log.e(TAG, date + msg2 + ": " + msg);
+		Log.e(TAG, date + msg2 + ": " + msg);
 	}
 
 	@Override

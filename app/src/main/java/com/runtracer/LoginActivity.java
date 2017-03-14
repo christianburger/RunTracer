@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -28,6 +29,8 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Date;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -333,7 +336,12 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 	}
 
 	public void writeLog(String msg) {
-		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
+		Date cdate;
+		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate = new Date()).toString());
+		String msg2 = String.format(Locale.US, "<%d>", cdate.getTime());
+		String TAG = "mercdb";
+		Log.e(TAG, date + msg2 + ": " + msg);
 	}
+
 }
 
