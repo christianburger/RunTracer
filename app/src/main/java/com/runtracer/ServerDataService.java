@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Process;
 import android.text.format.DateFormat;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -54,7 +55,7 @@ public class ServerDataService extends IntentService {
 		int threadID;
 		threadID = Process.getThreadPriority(myTid());
 		String msg2 = String.format(Locale.US, "<%d> thread id: %d \t>> ", cdate.getTime(), threadID);
-//		Log.e(TAG, date + ": " + msg2 + ": \t" + msg);
+		Log.e(TAG, date + ": " + msg2 + ": \t" + msg);
 	}
 
 	/**

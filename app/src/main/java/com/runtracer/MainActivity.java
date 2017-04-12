@@ -56,6 +56,7 @@ import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.plus.People;
 import com.google.android.gms.plus.Plus;
 import com.google.android.gms.plus.model.people.PersonBuffer;
+import com.runtracer.sqlitedb.SqliteHandler;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -193,6 +194,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private boolean isUpdated;
 	private Uri mAppUri;
 	private Uri mWebUrl;
+	private SqliteHandler sqlLiteHandler;
 
 	public MainActivity() {
 	}
@@ -231,6 +233,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		user_bio.status = "0";
 		user_bio.bMetricSystem = false;
 
+		sqlLiteHandler = new SqliteHandler(MainActivity.this);
+
 		isUpdated = false;
 
 		activityListMap = new HashMap<Long, Long>();
@@ -249,7 +253,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			.addScope(new Scope(Scopes.PROFILE))
 			.addScope(new Scope(Scopes.PLUS_LOGIN))
 			.addScope(new Scope(Scopes.PLUS_ME))
-			.addScope(new Scope(Scopes.PLUS_MOMENTS))
 			.addApi(AppIndex.APP_INDEX_API).build();
 		// [END create_google_api_client]
 

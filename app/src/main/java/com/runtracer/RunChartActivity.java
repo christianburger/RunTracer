@@ -235,8 +235,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		for (; it.hasNext(); ) {
 			RunInstant tmp_instant = new RunInstant();
 			tmp_instant = (RunInstant) run_data.runtrace.get(it.next());
-			code += String.format("\n[%s, %s, 'time: %d" +
-				"s'],", nf.format(tmp_instant.latitude), nf.format(tmp_instant.longitude), (tmp_instant.current_time - run_data.getStartTime_v())/1000);
+			code += String.format("\n[%s, %s, 'time: %d" + "s'],", nf.format(tmp_instant.latitude), nf.format(tmp_instant.longitude), (tmp_instant.current_time - run_data.getStartTime_v())/1000);
 		}
 
 	//	code += "		[37.4422, -122.1731, 'Shopping'] ";

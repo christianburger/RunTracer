@@ -348,4 +348,5 @@ infringements of rights of publicity, privacy, trademark rights, business interr
 	<string name="st_male">Male</string>
 	<string name="metric">Metric</string>
 	<string name="imperial">Imperial</string>
+	<string name="accept">Accept</string>
 </resources>

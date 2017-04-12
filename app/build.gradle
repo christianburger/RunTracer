@@ -10,14 +10,15 @@ android {
       storePassword 'regrub01'
     }
   }
-  compileSdkVersion 21
-  buildToolsVersion '25.0.0'
+  compileSdkVersion 25
+  buildToolsVersion '25.0.2'
   defaultConfig {
     applicationId "com.runtracer"
-    minSdkVersion 21
-    targetSdkVersion 22
+    minSdkVersion 22
+    targetSdkVersion 25
     versionName '2.5'
     versionCode 6
+    multiDexEnabled true
   }
   buildTypes {
     release {
@@ -36,10 +37,15 @@ android {
 
 dependencies {
   compile fileTree(include: ['*.jar'], dir: 'libs')
-  compile 'com.google.guava:guava:12.0'
-  compile 'com.android.support:appcompat-v7:22.2.1'
-  compile 'com.google.android.gms:play-services:8.1.0'
-  compile 'com.android.support:support-v13:22.2.1'
-  compile 'com.android.support:support-v4:22.2.1'
-  compile 'com.android.support:design:22.2.1'
+  compile 'com.google.android.gms:play-services-plus:10.2.1'
+  compile 'com.google.android.gms:play-services-auth:10.2.1'
+  compile 'com.google.android.gms:play-services-analytics:10.2.1'
+  compile 'com.google.android.gms:play-services-maps:10.2.1'
+  compile 'com.google.android.gms:play-services-fitness:10.2.1'
+  compile 'com.google.firebase:firebase-appindexing:10.2.1'
+
+
+  compile 'com.android.support:support-v4:19.1.0'
+  compile 'com.android.support:appcompat-v7:25.3.1'
+  compile 'com.android.support:design:25.3.1'
 }

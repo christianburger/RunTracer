@@ -5,7 +5,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:paddingBottom="@dimen/activity_vertical_margin"
-                tools:context="com.RunTracer.RunActivity">
+                tools:context="com.runtracer.RunActivity">
 
 	<TableLayout
 		android:layout_width="match_parent"
@@ -548,8 +548,6 @@
 				android:minWidth="80sp"
 				android:maxWidth="80sp"
 				android:layout_marginLeft="6dp"/>
-
-
 			<Button
 				android:text="@string/calibrate_button"
 				android:layout_width="wrap_content"
@@ -566,12 +564,6 @@
 				android:maxWidth="90dp"
 				android:minWidth="90dp"
 				android:layout_gravity="top|left"/>
-
-
-		</TableRow>
-		<TableRow
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content" >
 		</TableRow>
 	</TableLayout>
 	<TableLayout

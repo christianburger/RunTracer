@@ -57,22 +57,22 @@ describe run_summary;
 	private static final int TABLE_RUN_SUMMARY = 0;
 
 	private static HashMap<Integer, String> dbtables;
-	public static HashMap<Integer, String>[] dbtablefields;
+	private static HashMap<Integer, String>[] dbtablefields;
 	private static HashMap<Integer, String>[] dbtabletypes;
 
-	public static final int field_uid = 0;
-	public static final int field_runid = 1;
-	public static final int field_distance = 2;
-	public static final int field_gps_distance = 3;
-	public static final int field_average_speed = 4;
-	public static final int field_calories_distance = 5;
-	public static final int field_calories_heart_beat = 6;
-	public static final int field_current_weight = 7;
-	public static final int field_current_fat = 8;
-	public static final int field_runtrace = 9;
-	public static final int field_runtrace_md5sum = 10;
-	public static final int field_date_start = 11;
-	public static final int field_date_end = 12;
+	private static final int field_uid = 0;
+	private static final int field_runid = 1;
+	private static final int field_distance = 2;
+	private static final int field_gps_distance = 3;
+	private static final int field_average_speed = 4;
+	private static final int field_calories_distance = 5;
+	private static final int field_calories_heart_beat = 6;
+	private static final int field_current_weight = 7;
+	private static final int field_current_fat = 8;
+	private static final int field_runtrace = 9;
+	private static final int field_runtrace_md5sum = 10;
+	private static final int field_date_start = 11;
+	private static final int field_date_end = 12;
 
 	private boolean isCreated;
 
@@ -327,7 +327,7 @@ describe run_summary;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		JSONObject priceJSON;
+		JSONObject rundataJSON;
 		ArrayList<RunData> runDataArrayList = new ArrayList<>();
 		if (this.isCreated() && dbtables != null && dbtablefields != null && dbtabletypes != null) {
 			try {
@@ -339,7 +339,7 @@ describe run_summary;
 				String sqlQry = SQLiteQueryBuilder.buildQueryString(false, dbtables.get(TABLE_RUN_SUMMARY), columns, dbtablefields[TABLE_RUN_SUMMARY].get(field_runid) + "=" + selections[0], null, null, dbtablefields[TABLE_RUN_SUMMARY].get(field_runid), null);
 				writeLog(String.format(Locale.US, "SqliteHandler: getPriceInfo: buildQueryString: %s, cursor.getCount(): %d, cursor.getColumnCount: %d ", sqlQry, cursor.getCount(), cursor.getColumnCount()));
 
-				priceJSON = new JSONObject("{\"key\":\"data\"}");
+				rundataJSON = new JSONObject("{\"key\":\"data\"}");
 				for (int i = 0; i < cursor.getCount(); i++) {
 					for (int j = 0; j < dbtablefields[TABLE_RUN_SUMMARY].size(); j++) {
 						String column;
@@ -347,7 +347,7 @@ describe run_summary;
 						column = dbtablefields[TABLE_RUN_SUMMARY].get(j);
 						value = getCursorObject(cursor, j, i);
 					}
-					if (!priceJSON.isNull("runid")) {
+					if (!rundataJSON.isNull("runid")) {
 						RunData check = new RunData();
 					}
 				}
@@ -355,7 +355,6 @@ describe run_summary;
 				e.printStackTrace();
 			}
 		}
-
 		dbLock.release();
 		return runDataArrayList;
 	}

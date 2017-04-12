@@ -21,9 +21,7 @@ import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.runtracer.interfaces.OnDateSetListener;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
