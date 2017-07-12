@@ -11,7 +11,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
-import android.widget.ImageSwitcher;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -75,27 +74,27 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 
 	private String getAboutInfo() {
 		String info="";
-		info= String.format("%s, %d years old.", user_bio.full_name, user_bio.age);
+		info= String.format(Locale.CANADA, "%s, %d years old.", user_bio.getFull_name(), user_bio.getAge());
 		about_you=info;
-		info= String.format("\n\nBody Mass Index: %.2f%%", user_bio.bmi);
+		info= String.format(Locale.CANADA, "\n\nBody Mass Index: %.2f%%", user_bio.getBmi());
 		about_you+=info;
-		info= String.format("\nBody Adiposity Index: %.2f%%", user_bio.bai);
+		info= String.format(Locale.CANADA, "\nBody Adiposity Index: %.2f%%", user_bio.getBai());
 		about_you+=info;
-		info= String.format("\nResting Metabolic Rate: %.0f KCal/day", user_bio.rmr);
+		info= String.format(Locale.CANADA, "\nResting Metabolic Rate: %.0f KCal/day", user_bio.getRmr());
 		about_you+=info;
-		info= String.format("\nBasal Metabolic Rate: %.0f KCal/day", user_bio.bmr);
+		info= String.format(Locale.CANADA, "\nBasal Metabolic Rate: %.0f KCal/day", user_bio.getBmr());
 		about_you+=info;
-		info= String.format("\nMaximum Heart Rate: %.0f Hz", user_bio.maximum_hr);
+		info= String.format(Locale.CANADA, "\nMaximum Heart Rate: %.0f Hz", user_bio.getMaximum_hr());
 		about_you+=info;
 		info= "\n\nWeight Loss Info";
 		about_you+=info;
-		double max_cal_per_day= (user_bio.bmi * user_bio.current_weight_v * 69 )/100;
+		double max_cal_per_day= (user_bio.getBmi()* user_bio.getCurrent_weight_v()* 69 )/100;
 		double max_weight_loss_day_lb= max_cal_per_day / 3500;
 		double max_weight_loss_day_kg= max_weight_loss_day_lb / conv_kg_lbs;
-		if(user_bio.bMetricSystem) {
-			info= String.format("\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f kg of fat.", max_cal_per_day, max_weight_loss_day_kg );
+		if(user_bio.isBMetricSystem()) {
+			info= String.format(Locale.CANADA, "\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f kg of fat.", max_cal_per_day, max_weight_loss_day_kg );
 		} else {
-			info= String.format("\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f pounds of fat.", max_cal_per_day, max_weight_loss_day_lb );
+			info= String.format(Locale.CANADA, "\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f pounds of fat.", max_cal_per_day, max_weight_loss_day_lb );
 		}
 		about_you+=info;
 		info="\nThis equivalence varies widely depending on a number of factors and is provided only as a rough estimate.";

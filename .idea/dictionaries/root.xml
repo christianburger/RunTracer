@@ -1,7 +1,23 @@
 <component name="ProjectDictionaryState">
   <dictionary name="root">
     <words>
+      <w>authtokenok</w>
+      <w>cdate</w>
+      <w>circunference</w>
+      <w>ckey</w>
+      <w>dataok</w>
+      <w>firebase</w>
       <w>healthcare</w>
+      <w>jsonuserdata</w>
+      <w>objectstream</w>
+      <w>passwd</w>
+      <w>rundata</w>
+      <w>runinfofile</w>
+      <w>runmapfile</w>
+      <w>runtrace</w>
+      <w>runtracer</w>
+      <w>sqlite</w>
+      <w>userdatafile</w>
     </words>
   </dictionary>
 </component>

@@ -1,1 +1,70 @@
-{"project_info":{"project_id":"runtracer-970","project_number":"803795755935","name":"RunTracer"},"client":[{"client_info":{"client_id":"android:com.runtracer","client_type":1,"android_client_info":{"package_name":"com.runtracer"}},"oauth_client":[{"client_id":"803795755935-4j4ch8osjmcddn9bg61ohlemdfkfc1ud.apps.googleusercontent.com","client_type":1,"android_info":{"package_name":"com.runtracer","certificate_hash":"9dffedeff92dee33af17c0f76987cb1a01af8c6a"}}],"services":{"analytics_service":{"status":2,"analytics_property":{"tracking_id":"UA-64076511-1"}},"cloud_messaging_service":{"status":2,"apns_config":[]},"appinvite_service":{"status":2,"other_platform_oauth_client":[]},"google_signin_service":{"status":2},"ads_service":{"status":2,"test_banner_ad_unit_id":"ca-app-pub-3940256099942544/6300978111","test_interstitial_ad_unit_id":"ca-app-pub-3940256099942544/1033173712"}}}]}
+{
+  "project_info": {
+    "project_number": "803795755935",
+    "firebase_url": "https://runtracer-970.firebaseio.com",
+    "project_id": "runtracer-970",
+    "storage_bucket": "runtracer-970.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:803795755935:android:0c8fb9af101db403",
+        "android_client_info": {
+          "package_name": "com.runtracer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "803795755935-1ans797kljdg9sceq77rdm31vgs7m7h1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runtracer",
+            "certificate_hash": "71a1fe262acc1426c32c993d199d066db6b1a474"
+          }
+        },
+        {
+          "client_id": "803795755935-ouinqcegkq5iab58k1phsv3d31288tio.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "803795755935-5eirbk9gq7v29kepkdvoju9ogj2b8mfr.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "803795755935-4j4ch8osjmcddn9bg61ohlemdfkfc1ud.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runtracer",
+            "certificate_hash": "9dffedeff92dee33af17c0f76987cb1a01af8c6a"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZ1p4-c6mm0tn7KDzebwbupzveVYdCHV0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 2,
+          "analytics_property": {
+            "tracking_id": "UA-64076511-1"
+          }
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "803795755935-ouinqcegkq5iab58k1phsv3d31288tio.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

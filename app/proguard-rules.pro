@@ -16,5 +16,7 @@
 #   public *;
 #}
 -keepclassmembers class * implements android.os.Parcelable {
+    -keepattributes Signature
+    -keepattributes *Annotation*
     static ** CREATOR;
 }

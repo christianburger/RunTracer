@@ -1,29 +1,40 @@
-package com.runtracer;
+package com.runtracer.services;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-class DataBaseExchange implements Serializable, Cloneable {
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Data
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+public class DataBaseExchange implements Serializable, Cloneable {
 	private static final long serialVersionUID = 100L;
-
-	public static long getSerialVersionUID() {
-		return serialVersionUID;
-	}
-
-	URL url;
-	String command = "";
-	String accountEmail = "";
-	String full_name = "";
-	String hash= "";
-
-	JSONObject json_data_in = new JSONObject();
-	JSONObject json_data_out = new JSONObject();
-
-	int error_no=0;
-	boolean pending= false;
+	private URL url;
+	private String command = "";
+	private String accountEmail = "";
+	private String full_name = "";
+	private String client_id;
+	private String client_secret;
+	private String grant_type;
+	private String hash= "";
+	private String method;
+	private JSONObject json_data_in;
+	private JSONObject json_data_out;
+	private int maxAttempts;
+	private int attemptNo;
+	private int error_no=0;
+	private boolean pending= false;
 
 	/**
 	 * Creates and returns a copy of this {@code Object}. The default
@@ -40,11 +51,12 @@ class DataBaseExchange implements Serializable, Cloneable {
 	 *                                    Cloneable} interface.
 	 */
 	@Override
-	protected Object clone() throws CloneNotSupportedException {
+	public Object clone() throws CloneNotSupportedException {
+		this.attemptNo++;
 		return super.clone();
 	}
 
-	String getHash() {
+	private String createHash() {
 		String hash= null;
 		try {
 			hash = this.clone().toString();
@@ -58,107 +70,17 @@ class DataBaseExchange implements Serializable, Cloneable {
 	}
 
 	private DataBaseExchange() {
+		this.createHash();
+		this.setMethod("GET");
+		this.setAttemptNo(0);
+		this.setMaxAttempts(4);
 	}
 
-	public DataBaseExchange(URL url, String command, String accountEmail, String full_name, String hash, JSONObject json_data_in, JSONObject json_data_out, int error_no, boolean pending) {
-		this.url = url;
-		this.command = command;
-		this.accountEmail = accountEmail;
-		this.full_name = full_name;
-		this.hash = hash;
-		this.json_data_in = json_data_in;
-		this.json_data_out = json_data_out;
-		this.error_no = error_no;
-		this.pending = pending;
-	}
-
-	private URL getUrl() {
-		return url;
-	}
-
-	public void setUrl(URL url) {
-		this.url = url;
-	}
-
-	private String getCommand() {
-		return command;
-	}
-
-	public void setCommand(String command) {
-		this.command = command;
-	}
-
-	private String getAccountEmail() {
-		return accountEmail;
-	}
-
-	public void setAccountEmail(String accountEmail) {
-		this.accountEmail = accountEmail;
-	}
-
-	public String getFull_name() {
-		return full_name;
-	}
-
-	public void setFull_name(String full_name) {
-		this.full_name = full_name;
-	}
-
-	public void setHash(String hash) {
-		this.hash = hash;
-	}
-
-	private JSONObject getJson_data_in() {
-		return json_data_in;
-	}
-
-	public void setJson_data_in(JSONObject json_data_in) {
-		this.json_data_in = json_data_in;
-	}
-
-	private JSONObject getJson_data_out() {
-		return json_data_out;
-	}
-
-	public void setJson_data_out(JSONObject json_data_out) {
-		this.json_data_out = json_data_out;
-	}
-
-	private int getError_no() {
-		return error_no;
-	}
-
-	public void setError_no(int error_no) {
-		this.error_no = error_no;
-	}
-
-	private boolean isPending() {
-		return pending;
-	}
-
-	public void setPending(boolean pending) {
-		this.pending = pending;
-	}
-
-	static DataBaseExchange createDataBaseExchange() {
+	public static DataBaseExchange createDataBaseExchange() {
 		return new DataBaseExchange();
 	}
 
-	@Override
-	public String toString() {
-		return "DataBaseExchange{" +
-			"url=" + url +
-			", command='" + command + '\'' +
-			", accountEmail='" + accountEmail + '\'' +
-			", full_name='" + full_name + '\'' +
-			", hash='" + hash + '\'' +
-			", json_data_in=" + json_data_in +
-			", json_data_out=" + json_data_out +
-			", error_no=" + error_no +
-			", pending=" + pending +
-			'}';
-	}
-
+	/*
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -180,8 +102,9 @@ class DataBaseExchange implements Serializable, Cloneable {
 		result = 31 * result + (isPending() ? 1 : 0);
 		return result;
 	}
+  */
 
-	void clear() {
+	public void clear() {
 		try {
 			url= new URL("https://www.runtrace.com");
 			command = "empty";

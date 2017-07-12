@@ -10,6 +10,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,7 +22,9 @@ import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import com.runtracer.interfaces.OnDateSetListener;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -55,6 +58,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 	Switch mUserGender;
 	EditText mFullName;
 	EditText mUserEmail;
+	EditText mUserPassword;
 
 	EditText mUserHeight;
 	EditText mUserHipCircumference;
@@ -72,6 +76,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 	String retrievedFullName;
 	String retrievedEmail;
+	private String retrievedPassword;
 	String retrievedGender;
 	String retrievedDOB;
 	String retrievedHeight;
@@ -105,6 +110,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 		retrievedFullName = "";
 		retrievedEmail = "";
+		retrievedPassword = "";
 		retrievedGender = "";
 		retrievedDOB = "";
 		retrievedHeight = "0";
@@ -172,6 +178,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		// Set up view instances
 		mFullName = (EditText) findViewById(R.id.full_name);
 		mUserEmail = (EditText) findViewById(R.id.email);
+		mUserPassword = (EditText) findViewById(R.id.password);
 		mUserDateofBirth = (Button) findViewById(R.id.date_picker_button);
 		mUserDateofBirth.setText(retrievedDOB);
 
@@ -217,6 +224,8 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		mFullName.setText(retrievedFullName);
 		mUserEmail.setOnClickListener(this);
 		mUserEmail.setOnTouchListener(this);
+		mUserPassword.setOnClickListener(this);
+		mUserPassword.setOnTouchListener(this);
 		mUserEmail.setText(retrievedEmail);
 		mUserGender.setText(retrievedGender);
 
@@ -296,7 +305,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 	public void onDateSet(Date date) {
 		SimpleDateFormat l_format = new SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault());
 		retrievedDateOfBirth = date;
-		writeLog(String.format(Locale.US, "NewUserActivity: LISTENER RECEIVED: date: %s >> retrievedDateOfBirth: %s ",date.toString(), retrievedDateOfBirth));
+		writeLog(String.format(Locale.US, "NewUserActivity: LISTENER RECEIVED: date: %s >> retrievedDateOfBirth: %s ", date.toString(), retrievedDateOfBirth));
 		mUserDateofBirth.setText(l_format.format(date));
 	}
 
@@ -487,6 +496,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 		retrievedFullName = String.valueOf(mFullName.getText());
 		retrievedEmail = String.valueOf(mUserEmail.getText());
+		retrievedPassword= String.valueOf(mUserPassword.getText());
 		retrievedGender = String.valueOf(mUserGender.getText());
 		retrievedDOB = datePicked;
 		retrievedHeight = String.valueOf(mUserHeight.getText());
@@ -573,6 +583,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 			try {
 				userData.put("full_name", retrievedFullName);
 				userData.put("email", retrievedEmail);
+				userData.put("passwd", retrievedPassword);
 				userData.put("gender", retrievedGender);
 				userData.put("dob", retrievedDOB);
 				userData.put("birthday", retrievedDOB);
@@ -645,6 +656,6 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-//		Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 }

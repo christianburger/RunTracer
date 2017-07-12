@@ -13,107 +13,113 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Data
+@ToString
+@Getter
+@Setter
 public class UserData implements Serializable {
 	private static final long serialVersionUID = 100L;
-
 	private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
 	private static final SimpleDateFormat local_format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.getDefault());
-
 	private static final String TAG = "user_data";
 
-	public final int RESTING_NO_READINGS = 20;
-	public final int RESTING_HR_MARGIN = 5;
-	public final int RESTING_HR_MIN = 40;
-	public final int RESTING_HR_MAX = 100;
+	private final int RESTING_NO_READINGS = 20;
+	private final int RESTING_HR_MARGIN = 5;
+	private final int RESTING_HR_MIN = 40;
+	private final int RESTING_HR_MAX = 100;
 
-	public String full_name;
-	public String birthday;
-	public String gender;
-	public String height;
-	public String hip_circumference;
-	public String current_weight;
-	public String current_fat;
-	public String target_weight;
-	public String target_fat;
-	public String email;
-	public String status;
-	public String created;
-	public String created_at;
+	private String full_name;
+	private String birthday;
+	private String gender;
+	private String height;
+	private String hip_circumference;
+	private String current_weight;
+	private String current_fat;
+	private String target_weight;
+	private String target_fat;
+	private String email;
+	private String status;
+	private String created;
+	private String created_at;
 
-	public boolean gender_v;
+	private boolean gender_v;
 
-	public double height_v = 0;
-	public double hip_circumference_v = 0;
-	public double current_weight_v = 0;
-	public double current_fat_v = 0;
-	public double target_weight_v = 0;
-	public double target_fat_v = 0;
+	private double height_v = 0;
+	private double hip_circumference_v = 0;
+	private double current_weight_v = 0;
+	private double current_fat_v = 0;
+	private double target_weight_v = 0;
+	private double target_fat_v = 0;
 
-	public double height_v_imperial = -1;
-	public double hip_circumference_v_imperial = -1;
-	public double current_weight_v_imperial = -1;
-	public double target_weight_v_imperial = -1;
+	private double height_v_imperial = -1;
+	private double hip_circumference_v_imperial = -1;
+	private double current_weight_v_imperial = -1;
+	private double target_weight_v_imperial = -1;
 
 	private final double conv_km_miles = 0.621371192237;
 	private final double conv_kg_lbs = 2.204622618;
 	private final double conv_cm_inches = 0.393700787402;
 
+	private Date birthday_date;
+	private int age = 0;
 
-	public Date birthday_date;
-	public int age = 0;
-
-	public double vo2max = 0;
-	public double cff = 0;
-	public double bmr = 0;
-	public double rmr = 0;
-	public double bmi = 0;
-	public double bai = 0;
+	private double vo2max = 0;
+	private double cff = 0;
+	private double bmr = 0;
+	private double rmr = 0;
+	private double bmi = 0;
+	private double bai = 0;
 
 	//heart rate data
-	public int rhr_state = 0;
-	public int hr_reading = 0;
-	public double current_hr = 0;        // current reading of heart rate
-	public double last_hr = 0;           // last reading of heart rate
-	public double resting_hr = 0;        // resting heart rate
-	public double hr_reserve = 0;        // heart rate reserve
-	public double maximum_hr = 0;        // maximum heart rate.
-	public double recovery_hr = 0;       // recovery heart rate.
+	private int rhr_state = 0;
+	private int hr_reading = 0;
+	private double current_hr = 0;        // current reading of heart rate
+	private double last_hr = 0;           // last reading of heart rate
+	private double resting_hr = 0;        // resting heart rate
+	private double hr_reserve = 0;        // heart rate reserve
+	private double maximum_hr = 0;        // maximum heart rate.
+	private double recovery_hr = 0;       // recovery heart rate.
 
-	public double target_hr_light = 0;
-	public double target_hr_moderate = 0;
-	public double target_hr_heavy = 0;
-	public double target_hr_very_heavy = 0;
+	private double target_hr_light = 0;
+	private double target_hr_moderate = 0;
+	private double target_hr_heavy = 0;
+	private double target_hr_very_heavy = 0;
 
-	public double total_distance_km = 0;
-	public double total_distance_miles = 0;
-	public double total_calories = 0;
-	public int no_runs = 0;
+	private double total_distance_km = 0;
+	private double total_distance_miles = 0;
+	private double total_calories = 0;
+	private int no_runs = 0;
 
-	public boolean bMetricSystem = false;
+	private boolean bMetricSystem = false;
 
-	public String uid;
-	public int uid_v = 0;
+	private String uid;
+	private int uid_v = 0;
 
-	public String session_id;
-	public int total_runs = 0;
+	private String session_id;
+	private int total_runs = 0;
 	private final int minimum_age = 18;
 	//private final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-	public Date created_v;
+	private Date created_v;
 
 	public UserData() {
-		full_name = "empty";
-		birthday = "empty";
-		gender = "empty";
-		height = "empty";
-		hip_circumference = "empty";
-		current_weight = "empty";
-		current_fat = "empty";
-		target_weight = "empty";
-		target_fat = "empty";
-		email = "empty";
-		status = "empty";
-		created = "empty";
-		created_at = "empty";
+		full_name = "";
+		birthday = "";
+		gender = "";
+		height = "";
+		hip_circumference = "";
+		current_weight = "";
+		current_fat = "";
+		target_weight = "";
+		target_fat = "";
+		email = "";
+		status = "";
+		created = "";
+		created_at = "";
 
 		gender_v = false;
 
@@ -158,10 +164,10 @@ public class UserData implements Serializable {
 		target_hr_heavy = -1;
 		target_hr_very_heavy = -1;
 		bMetricSystem = false;
-		uid = "empty";
+		uid = "";
 		uid_v = -1;
 
-		session_id = "empty";
+		session_id = "";
 		total_runs = 0;
 		created_v = new Date(0);
 	}
@@ -169,21 +175,20 @@ public class UserData implements Serializable {
 	int getValues() {
 		int result = 0;
 		this.total_distance_miles = this.total_distance_km * this.conv_km_miles;
-		if (this.current_weight.compareTo("empty") == 0 ||
-			this.height.compareTo("empty") == 0 ||
-			this.hip_circumference.compareTo("empty") == 0 ||
-			this.current_fat.compareTo("empty") == 0 ||
-			this.target_weight.compareTo("empty") == 0 ||
-			this.target_fat.compareTo("empty") == 0 ||
-			this.gender.compareTo("empty") == 0 ||
-			this.full_name.compareTo("empty") == 0 ||
-			this.email.compareTo("empty") == 0) {
-		}
-		{
-			result = -1;
+		if (
+			this.current_weight == null || this.current_weight.compareTo("") == 0 ||
+				this.height == null || this.height.compareTo("") == 0 ||
+				this.hip_circumference == null || this.hip_circumference.compareTo("") == 0 ||
+				this.current_fat == null || this.current_fat.compareTo("") == 0 ||
+				this.target_weight == null || this.target_weight.compareTo("") == 0 ||
+				this.target_fat == null || this.target_fat.compareTo("") == 0 ||
+				this.gender == null || this.gender.compareTo("") == 0 ||
+				this.full_name == null || this.full_name.compareTo("") == 0 ||
+				this.email == null || this.email.compareTo("") == 0) {
+			return(-1);
 		}
 		writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-		if (!(this.created.compareTo("0") == 0) && !(this.created.compareTo("1") == 0) && !(this.created.compareTo("empty") == 0)) {
+		if ((this.created != null) && !(this.created.compareTo("0") == 0) && !(this.created.compareTo("1") == 0)) {
 			try {
 				writeLog(String.format("inside try: created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
 				this.created_v = new Date();
@@ -196,28 +201,31 @@ public class UserData implements Serializable {
 				e.printStackTrace();
 			}
 		}
-		writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-
-		if (!(this.current_weight.compareTo("empty") == 0)) {
-			this.current_weight_v = Double.parseDouble(this.current_weight);
-		}
-		if (!(this.height.compareTo("empty") == 0)) {
-			this.height_v = Double.parseDouble(this.height);
-		}
-		if (!(this.hip_circumference.compareTo("empty") == 0)) {
-			this.hip_circumference_v = Double.parseDouble(this.hip_circumference);
-		}
-		if (!(this.current_fat.compareTo("empty") == 0)) {
-			this.current_fat_v = Double.parseDouble(this.current_fat);
-		}
-		if (!(this.target_weight.compareTo("empty") == 0)) {
-			this.target_weight_v = Double.parseDouble(this.target_weight);
-		}
-		if (!(this.target_fat.compareTo("empty") == 0)) {
-			this.target_fat_v = Double.parseDouble(this.target_fat);
-		}
-		if (!(this.uid.compareTo("empty") == 0)) {
-			this.uid_v = Integer.parseInt(this.uid);
+		try {
+			writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
+			if (this.current_weight != null && this.current_weight.length() > 2) {
+				this.current_weight_v = Double.parseDouble(this.current_weight);
+			}
+			if (this.height != null && this.height.length() > 2) {
+				this.height_v = Double.parseDouble(this.height);
+			}
+			if (this.hip_circumference != null && this.hip_circumference.length() > 2) {
+				this.hip_circumference_v = Double.parseDouble(this.hip_circumference);
+			}
+			if (this.current_fat != null && this.current_fat.length() > 2) {
+				this.current_fat_v = Double.parseDouble(this.current_fat);
+			}
+			if (this.target_weight != null && this.target_weight.length() > 2) {
+				this.target_weight_v = Double.parseDouble(this.target_weight);
+			}
+			if (this.target_fat != null && this.target_fat.length() > 2) {
+				this.target_fat_v = Double.parseDouble(this.target_fat);
+			}
+			if (this.uid != null && this.uid.length() > 1) {
+				this.uid_v = Integer.parseInt(this.uid);
+			}
+		} catch (NumberFormatException nfe) {
+			writeLog("YES, GOT AN EXCEPTION: " + nfe.getMessage());
 		}
 		if (!(this.gender.compareTo("empty") == 0)) {
 			this.gender_v = (gender.compareTo("Male") == 0);
@@ -514,6 +522,16 @@ public class UserData implements Serializable {
 		}
 		return (returnval);
 	}
+
+	public UserData fromJSON(JSONObject jsonObject) {
+		this.writeJSON(jsonObject);
+		return this;
+	}
+
+	public JSONObject toJSON() {
+			return (this.createJSON());
+	}
+
 
 	public void writeLog(String msg) {
 		Date datenow = new Date();

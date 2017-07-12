@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.runtracer;
+package com.runtracer.services;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -30,7 +30,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
-import android.util.Log;
+
+import com.runtracer.SampleGattAttributes;
 
 import java.util.List;
 import java.util.UUID;
@@ -148,7 +149,7 @@ public class BluetoothLeService extends Service {
 	}
 
 	public class LocalBinder extends Binder {
-		BluetoothLeService getService() {
+		public BluetoothLeService getService() {
 			return BluetoothLeService.this;
 		}
 	}

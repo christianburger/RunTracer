@@ -169,7 +169,7 @@
 
 	<string name="hip_circunference_static">"Hip Circ."</string>
 	<string name="hip_circunference_value">""</string>
-	<string name="hip_circunference_hint">Hip Circumference in Centimetres</string>
+	<string name="hip_circunference_hint">Hip Circumference</string>
 
 	<string name="full_name_static">Name</string>
 	<string name="full_name"/>
@@ -349,4 +349,9 @@ infringements of rights of publicity, privacy, trademark rights, business interr
 	<string name="metric">Metric</string>
 	<string name="imperial">Imperial</string>
 	<string name="accept">Accept</string>
+	<string name="button_message_stop">STOP</string>
+	<string name="button_message_resume">RESUME</string>
+	<string name="auth_failed">Authentication Failed</string>
+	<string name="male">Male</string>
+	<string name="female">Female</string>
 </resources>

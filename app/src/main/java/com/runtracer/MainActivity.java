@@ -9,10 +9,8 @@ import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -26,6 +24,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
+import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
@@ -36,26 +35,30 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.SignInButton;
-import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.GoogleApiClient.Builder;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Scope;
-import com.google.android.gms.plus.People;
-import com.google.android.gms.plus.Plus;
-import com.google.android.gms.plus.model.people.PersonBuffer;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.runtracer.services.BluetoothLeService;
+import com.runtracer.services.DataBaseExchange;
+import com.runtracer.services.ServerDataService;
 import com.runtracer.sqlitedb.SqliteHandler;
 
 import org.json.JSONException;
@@ -84,22 +87,14 @@ import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
-import static com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
-
-public class MainActivity extends AppCompatActivity implements OnClickListener, ConnectionCallbacks, OnConnectionFailedListener, SensorEventListener, ResultCallback<People.LoadPeopleResult> {
+public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener {
 
 	private static final boolean DEVELOPER_MODE = false;
-
-	public static final int minimum_age = 13;
-
+	public static final int minimum_age = 12;
 	public static final int MAX_AVAILABLE = 1;
 	private static final int MAX_ATTEMPTS = 10;
-
 	private static final String TAG = "runtracer";
-
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
-
 	public static DataBaseExchange dbExchange;
 	public static UserData user_bio;
 	public static String lastHash = null;
@@ -111,8 +106,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	FileOutputStream f_out;
 
 	private BluetoothLeService mBluetoothLeService;
-	private String mDeviceAddress;
 
+	private FirebaseAuth mAuth;
+	private FirebaseAuth.AuthStateListener mAuthListener;
+	private FirebaseAnalytics mFirebaseAnalytics;
+
+	private String mDeviceAddress;
 	private HashMap activityListMap;
 	private HashMap activityInfoMap;
 
@@ -146,10 +145,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int get_run_info = 1007;
 	private static final int get_all_run_info = 1008;
 
-	/* Client for accessing Google APIs */
-	private GoogleApiClient mGoogleApiClient;
-
-
 	/* View to display current status (signed-in, signed-out, disconnected, etc) */
 	private TextView mStatus;
 	private TextView mUsername;
@@ -178,7 +173,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private Button mMeasureRHR;
 	private Button mSignOutButton;
-	private SignInButton mGooglePlusSignIn;
 
 	/* Is there is a ConnectionResult resolution in progress? */
 	private boolean mIsResolving = false;
@@ -188,13 +182,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private boolean mIsAuthenticated = false;
 
 	/* Should we automatically resolve ConnectionResults when possible? */
-	private boolean mShouldResolve = false;
 	private boolean isBluetoothLeRegistered;
 
 	private boolean isUpdated;
-	private Uri mAppUri;
-	private Uri mWebUrl;
 	private SqliteHandler sqlLiteHandler;
+	private SignInButton mGoogleSignIn;
+	private GoogleApiClient mGoogleApiClient;
 
 	public MainActivity() {
 	}
@@ -219,6 +212,25 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 		new SimpleEula(this).show();
 
+// Configure sign-in to request the user's ID, email address, and basic
+// profile. ID and basic profile are included in DEFAULT_SIGN_IN.
+		GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+			.requestIdToken(getString(R.string.default_web_client_id))
+			.requestEmail()
+			.build();
+
+		mGoogleApiClient = new GoogleApiClient.Builder(this)
+			.enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
+			.addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+			.build();
+
+		FirebaseApp.initializeApp(this);
+		mAuth = FirebaseAuth.getInstance();
+		mAuthListener = this;
+
+		// Obtain the FirebaseAnalytics instance.
+		mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
 		try {
 			available.acquire();
 			dbExchange = DataBaseExchange.createDataBaseExchange();
@@ -230,8 +242,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 		user_bio = new UserData();
 		user_bio.getValues();
-		user_bio.status = "0";
-		user_bio.bMetricSystem = false;
+		user_bio.setStatus("0");
+		user_bio.setBMetricSystem(false);
 
 		sqlLiteHandler = new SqliteHandler(MainActivity.this);
 
@@ -244,18 +256,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		activityInfoMap.clear();
 		local_registerReceiver();
 
-		// [START create_google_api_client]
-		// Build GoogleApiClient with access to basic profile
-		mGoogleApiClient = new Builder(this)
-			.addConnectionCallbacks(this)
-			.addOnConnectionFailedListener(this)
-			.addApi(Plus.API)
-			.addScope(new Scope(Scopes.PROFILE))
-			.addScope(new Scope(Scopes.PLUS_LOGIN))
-			.addScope(new Scope(Scopes.PLUS_ME))
-			.addApi(AppIndex.APP_INDEX_API).build();
-		// [END create_google_api_client]
-
 		this.setContentView(R.layout.activity_main);
 		this.setupGui();
 		this.readFile();
@@ -265,7 +265,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		// [START restore_saved_instance_state]
 		if (savedInstanceState != null) {
 			mIsResolving = savedInstanceState.getBoolean(KEY_IS_RESOLVING);
-			mShouldResolve = savedInstanceState.getBoolean(KEY_SHOULD_RESOLVE);
 		}
 		// [END restore_saved_instance_state]
 	}
@@ -318,17 +317,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				// Read an object
 				writeLog("File found, reading data now: ");
 				user_bio = (UserData) obj_in.readObject();
-				writeLog(String.format(Locale.US, "00 tmp.full_name: %s", user_bio.full_name));
-				writeLog(String.format(Locale.US, "00 tmp.email: %s", user_bio.email));
-				writeLog(String.format(Locale.US, "00 tmp.bMetricSystem: %b", user_bio.bMetricSystem));
 				user_bio.getValues();
-				writeLog(String.format(Locale.US, "01 tmp.full_name: %s", user_bio.full_name));
-				writeLog(String.format(Locale.US, "01 tmp.email: %s", user_bio.email));
-				writeLog(String.format(Locale.US, "01 tmp.bMetricSystem: %b", user_bio.bMetricSystem));
-				writeLog(String.format(Locale.US, "01 tmp.created: %s", user_bio.created));
-				writeLog(String.format(Locale.US, "01 tmp.created_at: %s", user_bio.created_at));
-				writeLog(String.format(Locale.US, "01 tmp.created_v: %s", user_bio.created_v.toString()));
-				mMetricSystem.setChecked(user_bio.bMetricSystem);
+				mMetricSystem.setChecked(user_bio.isBMetricSystem());
 				userdata_ok = true;
 				f_in.close();
 			} else {
@@ -384,23 +374,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onStop() {
 		super.onStop();
-		// ATTENTION: This was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		Action viewAction = Action.newAction(
-			Action.TYPE_VIEW, // TODO: choose an action type.
-			"Main Page", // TODO: Define a title for the content shown.
-			// TODO: If you have web page content that matches this app activity's content,
-			// make sure this auto-generated web page URL is correct.
-			// Otherwise, set the URL to null.
-			Uri.parse("http://host/path"),
-			// TODO: Make sure this auto-generated app deep link URI is correct.
-			Uri.parse("android-app://com.runtracer/http/host/path")
-		);
-		AppIndex.AppIndexApi.end(mGoogleApiClient, viewAction);
-		writeLog("onStop()");
-		// ATTENTION: This was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		mGoogleApiClient.disconnect();
+		if (mAuthListener != null) {
+			mAuth.removeAuthStateListener(mAuthListener);
+		}
 	}
 
 	@Override
@@ -469,7 +445,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	public void newUser(JSONObject userInfo) throws JSONException {
 		if (userInfo.isNull("metric")) {
-			userInfo.put("metric", user_bio.bMetricSystem ? 1 : 0);
+			userInfo.put("metric", user_bio.isBMetricSystem() ? 1 : 0);
 		}
 		writeLog(String.format(Locale.US, "userInfo: %s", userInfo.toString()));
 		Intent intent = new Intent(this, NewUserActivity.class);
@@ -481,17 +457,17 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		writeLog(String.format(Locale.US, "userProfile: 00 userInfo: %s", userInfo));
 		try {
 			userInfo.put("is_signed_in", mIsSignedIn);
-			userInfo.put("full_name", user_bio.full_name);
-			userInfo.put("email", user_bio.email);
-			userInfo.put("gender", user_bio.gender);
-			userInfo.put("birthday", user_bio.birthday);
-			userInfo.put("height", user_bio.height_v);
-			userInfo.put("hip_circumference", user_bio.hip_circumference_v);
-			userInfo.put("weight", user_bio.current_weight_v);
-			userInfo.put("target_weight", user_bio.target_weight_v);
-			userInfo.put("target_fat", user_bio.target_fat_v);
-			userInfo.put("fat_percentage", user_bio.current_fat_v);
-			userInfo.put("metric", user_bio.bMetricSystem ? 1 : 0);
+			userInfo.put("full_name", user_bio.getFull_name());
+			userInfo.put("email", user_bio.getEmail());
+			userInfo.put("gender", user_bio.getGender());
+			userInfo.put("birthday", user_bio.getBirthday());
+			userInfo.put("height", user_bio.getHeight_v());
+			userInfo.put("hip_circumference", user_bio.getHip_circumference_v());
+			userInfo.put("weight", user_bio.getCurrent_weight_v());
+			userInfo.put("target_weight", user_bio.getTarget_weight_v());
+			userInfo.put("target_fat", user_bio.getTarget_fat_v());
+			userInfo.put("fat_percentage", user_bio.getCurrent_fat_v());
+			userInfo.put("metric", user_bio.isBMetricSystem() ? 1 : 0);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -514,12 +490,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	private void setupGui() {
-
-		mGooglePlusSignIn = (SignInButton) findViewById(R.id.sign_in_button);
-		mGooglePlusSignIn.setOnClickListener(this);
-		mGooglePlusSignIn.setSize(SignInButton.SIZE_WIDE);
-		mGooglePlusSignIn.setEnabled(false);
-		mGooglePlusSignIn.setVisibility(Button.VISIBLE);
+		mGoogleSignIn = (SignInButton) findViewById(R.id.sign_in_button);
+		mGoogleSignIn.setOnClickListener(this);
+		mGoogleSignIn.setSize(SignInButton.SIZE_WIDE);
+		mGoogleSignIn.setEnabled(true);
+		mGoogleSignIn.setVisibility(Button.VISIBLE);
+		mGoogleSignIn.setSize(SignInButton.SIZE_STANDARD);
 
 		mSignOutButton = (Button) findViewById(R.id.sign_out_button);
 		mSignOutButton.setOnClickListener(this);
@@ -564,11 +540,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 		// Set up view instances
 		mMetricSystem = (Switch) findViewById(R.id.user_unit_system);
-
 		mMetricSystem.setOnClickListener(this);
 		mMetricSystem.setEnabled(true);
 		mMetricSystem.setVisibility(Switch.VISIBLE);
-
 		mMetricSystem.setText(R.string.user_unit_system_metric);
 
 		mStatus = (TextView) findViewById(R.id.status);
@@ -618,7 +592,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private String printValue(String value) {
 		String stringtoprint = "";
-		if (!(value.contains("empty")) && !value.isEmpty()) {
+		if (value != null && !value.isEmpty()) {
 			stringtoprint = value;
 		}
 		return stringtoprint;
@@ -641,66 +615,57 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private void updateUI() {
 		user_bio.getValues();
-		user_bio.bMetricSystem = mMetricSystem.isChecked();
-		if (user_bio.bMetricSystem) {
+		user_bio.setBMetricSystem(mMetricSystem.isChecked());
+		if (user_bio.isBMetricSystem()) {
 			mMetricSystem.setText(R.string.user_unit_system_metric);
 		} else {
 			mMetricSystem.setText(R.string.user_unit_system_imperial);
 		}
-		if (user_bio.bMetricSystem) {
-			mUserTargetWeight.setText(printValue(user_bio.target_weight_v));
-			mUserCurrentWeight.setText(printValue(user_bio.current_weight_v));
+		if (user_bio.isBMetricSystem()) {
+			mUserTargetWeight.setText(printValue(user_bio.getTarget_weight_v()));
+			mUserCurrentWeight.setText(printValue(user_bio.getCurrent_weight_v()));
 		} else {
-			mUserTargetWeight.setText(printValue(user_bio.target_weight_v_imperial));
-			mUserCurrentWeight.setText(printValue(user_bio.current_weight_v_imperial));
+			mUserTargetWeight.setText(printValue(user_bio.getTarget_weight_v_imperial()));
+			mUserCurrentWeight.setText(printValue(user_bio.getTarget_weight_v_imperial()));
 		}
-		if (user_bio.bMetricSystem) {
-			mDistance.setText(printValue(user_bio.total_distance_km));
+		if (user_bio.isBMetricSystem()) {
+			mDistance.setText(printValue(user_bio.getTotal_distance_km()));
 		} else {
-			mDistance.setText(printValue(user_bio.total_distance_miles));
+			mDistance.setText(printValue(user_bio.getTotal_distance_miles()));
 		}
-		mCalories.setText(printValue(user_bio.total_calories));
-		mTotalRuns.setText(printValue(user_bio.total_runs));
+		mCalories.setText(printValue(user_bio.getTotal_calories()));
+		mTotalRuns.setText(printValue(user_bio.getTotal_runs()));
 
-		mUsername.setText(printValue(user_bio.full_name));
-		mUserCurrentFat.setText(printValue(user_bio.current_fat_v));
-		mUserTargetFat.setText(printValue(user_bio.target_fat_v));
+		mUsername.setText(printValue(user_bio.getFull_name()));
+		mUserCurrentFat.setText(printValue(user_bio.getCurrent_fat_v()));
+		mUserTargetFat.setText(printValue(user_bio.getTarget_fat_v()));
 
-		mBodyMassIndex.setText(printValue(user_bio.bmi));
-		mBodyAdiposityIndex.setText(printValue(user_bio.bai));
-		if (user_bio.age > minimum_age) {
+		mBodyMassIndex.setText(printValue(user_bio.getBmi()));
+		mBodyAdiposityIndex.setText(printValue(user_bio.getBai()));
+		if (user_bio.getAge() > minimum_age) {
 			user_bio.getValues();
-			mUserMaxHR.setText(printValue(user_bio.maximum_hr));
-			mVO2max.setText(printValue(user_bio.vo2max));
-			mHeartRateReserve.setText(printValue(user_bio.hr_reserve));
+			mUserMaxHR.setText(printValue(user_bio.getMaximum_hr()));
+			mVO2max.setText(printValue(user_bio.getVo2max()));
+			mHeartRateReserve.setText(printValue(user_bio.getHr_reserve()));
 		}
-		mRecoveryHeartRate.setText(printValue(user_bio.recovery_hr));
-		mRestingHeartRate.setText(printValue(user_bio.resting_hr));
+		mRecoveryHeartRate.setText(printValue(user_bio.getRecovery_hr()));
+		mRestingHeartRate.setText(printValue(user_bio.getResting_hr()));
 
 		mIsSignedIn = mGoogleApiClient.isConnected();
-		mIsEmailSignedIn = (!mIsSignedIn && isEmailValid(user_bio.email));
+		mIsEmailSignedIn = (!mIsSignedIn && isEmailValid(user_bio.getEmail()));
 
 		if (mIsSignedIn || mIsEmailSignedIn) {
-			mUserInfo.setText(String.format("Member since %s", printValue(user_bio.created_v)));
+			mUserInfo.setText(String.format("Member since %s", printValue(user_bio.getCreated_v())));
 			try {
-				if (mIsSignedIn) {
-					if (Plus.PeopleApi.getCurrentPerson(mGoogleApiClient) != null) {
-						String google_account_name = Plus.PeopleApi.getCurrentPerson(mGoogleApiClient).getDisplayName();
-						mUsername.setText(google_account_name);
-						mStatus.setText(getString(R.string.signed_in_fmt, google_account_name));
-					} else {
-						Snackbar.make(findViewById(android.R.id.content), "Google+ could not connect, aborting.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-					}
-				}
 				if (mIsEmailSignedIn) {
-					mStatus.setText(getString(R.string.signed_in_fmt, user_bio.full_name));
+					mStatus.setText(getString(R.string.signed_in_fmt, user_bio.getFull_name()));
 				}
-				mGooglePlusSignIn.setEnabled(false);
-				mGooglePlusSignIn.setVisibility(View.INVISIBLE);
+				mGoogleSignIn.setEnabled(false);
+				mGoogleSignIn.setVisibility(View.INVISIBLE);
 
-				ViewGroup layout = (ViewGroup) mGooglePlusSignIn.getParent();
-				if (null != layout) //for safety only  as you are doing onClick
-					layout.removeView(mGooglePlusSignIn);
+				//ViewGroup layout = (ViewGroup) mGoogleSignIn.getParent();
+				//if (null != layout) //for safety only  as you are doing onClick
+				//layout.removeView(mGoogleSignIn);
 
 				mSignOutButton.setText(R.string.sign_out);
 				mSignOutButton.setBackgroundColor(Color.DKGRAY);
@@ -722,8 +687,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			// Show signed-out message
 			mStatus.setText(R.string.signed_out);
 			// Set button visibility
-			mGooglePlusSignIn.setEnabled(true);
-			mGooglePlusSignIn.setVisibility(View.VISIBLE);
+			//mGoogleSignIn.setEnabled(true);
+			//mGoogleSignIn.setVisibility(View.VISIBLE);
 
 			mSignOutButton.setEnabled(false);
 			mSignOutButton.setVisibility(View.INVISIBLE);
@@ -734,7 +699,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		boolean result = false;
 		if (isServerReady()) {
 			available.acquire();
-			dbExchange.pending = true;
+			dbExchange.setPending(true);
 			available.release();
 			Intent mServiceIntent = new Intent(this, ServerDataService.class);
 			mServiceIntent.setAction(ServerDataService.ACTION_QUERY_SERVER);
@@ -750,62 +715,158 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		boolean result = false;
 		for (int attempts = 0; attempts < MAX_ATTEMPTS && !result; attempts++) {
 			available.acquire();
-			result = !dbExchange.pending;
+			result = !dbExchange.isPending();
 			available.release();
 		}
 		return result;
 	}
 
+	private boolean getOauth2Token(JSONObject jsonUserData) {
+		try {
+			if (isServerReady()) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.102:8080/auth/oauth/token"));
+				dbExchange.setCommand("get_token");
+				dbExchange.setAccountEmail((String) jsonUserData.get("email"));
+				dbExchange.setFull_name((String) jsonUserData.get("full_name"));
+				dbExchange.setGrant_type("client_credentials");
+				dbExchange.setMethod("POST");
+				dbExchange.setClient_id("admin");
+				dbExchange.setClient_secret("password");
+				if (dbExchange.getFull_name().compareTo("") == 0) {
+					dbExchange.setFull_name(null);
+				}
+				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
+				dbExchange.getJson_data_in().put("email", jsonUserData.isNull("email")?"-":jsonUserData.get("email"));
+				dbExchange.getJson_data_in().put("passwd", jsonUserData.isNull("passwd")?"-":jsonUserData.get("passwd"));
+				dbExchange.getJson_data_in().put("logged", jsonUserData.isNull("logged")?"-":jsonUserData.get("logged"));
+				dbExchange.setJson_data_in(new JSONObject());
+				String hash = dbExchange.getHash();
+				available.release();
+				sendServerDataServiceRequest(hash);
+			}
+		} catch (JSONException | MalformedURLException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return true;
+	}
+
 	private boolean authUser(JSONObject jsonUserData) throws MalformedURLException, InterruptedException, JSONException {
+		String email, password;
 		boolean authok = false;
+		email = jsonUserData.getString("email");
+		password = jsonUserData.getString("passwd");
 		if (isServerReady()) {
 			available.acquire();
 			dbExchange.clear();
 
-			dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-			dbExchange.command = "auth_user";
-			dbExchange.accountEmail = (String) jsonUserData.get("email");
-			dbExchange.full_name = (String) jsonUserData.get("full_name");
-			if (dbExchange.full_name.compareTo("") == 0) {
-				dbExchange.full_name = "empty";
+			//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
+			dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
+			dbExchange.setCommand("auth_user");
+			dbExchange.setAccountEmail((String) jsonUserData.get("email"));
+			dbExchange.setFull_name((String) jsonUserData.get("full_name"));
+			if (dbExchange.getFull_name().compareTo("") == 0) {
+				dbExchange.setFull_name(null);
 			}
-			dbExchange.json_data_in.accumulate("command", dbExchange.command);
-			dbExchange.json_data_in.accumulate("email", jsonUserData.get("email"));
-			dbExchange.json_data_in.accumulate("passwd", jsonUserData.get("passwd"));
-			dbExchange.json_data_in.accumulate("logged", jsonUserData.get("logged"));
+			dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
+			dbExchange.getJson_data_in().put("email", jsonUserData.get("email"));
+			dbExchange.getJson_data_in().put("passwd", jsonUserData.get("passwd"));
+			dbExchange.getJson_data_in().put("logged", jsonUserData.get("logged"));
 			String hash = dbExchange.getHash();
 			available.release();
 			sendServerDataServiceRequest(hash);
 			authok = true;
 		}
+
+		mAuth.signInWithEmailAndPassword(email, password)
+			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+				@Override
+				public void onComplete(@NonNull Task<AuthResult> task) {
+					Log.d(TAG, "signInWithEmail:onComplete:" + task.isSuccessful());
+
+					// If sign in fails, display a message to the user. If sign in succeeds
+					// the auth state listener will be notified and logic to handle the
+					// signed in user can be handled in the listener.
+					if (!task.isSuccessful()) {
+						Log.w(TAG, "signInWithEmail:failed", task.getException());
+						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_SHORT).show();
+					}
+				}
+			});
+
+		FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+		if (user != null) {
+			authok = true;
+			String name = user.getDisplayName();
+			email = user.getEmail();
+			Uri photoUrl = user.getPhotoUrl();
+			// The user's ID, unique to the Firebase project. Do NOT use this value to
+			// authenticate with your backend server, if you have one. Use
+			// FirebaseUser.getToken() instead.
+			String uid = user.getUid();
+			writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: name: %s", name));
+			writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: email: %s", email));
+			writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: uid: %s", uid));
+			user_bio.setFull_name(name);
+			user_bio.setEmail(email);
+			user.getToken(true);
+			getOauth2Token(jsonUserData);
+			if (photoUrl != null) {
+				writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: photo URL: %s", photoUrl));
+			}
+		}
 		return authok;
 	}
 
 	private int sendUserData(JSONObject jsonUserData) throws MalformedURLException, InterruptedException, JSONException {
+		String email, password;
+		email = jsonUserData.getString("email");
+		password = jsonUserData.getString("passwd");
 		boolean dataok = false;
 		if (isServerReady()) {
 			available.acquire();
 			dbExchange.clear();
-			dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-			dbExchange.command = "send_user_data";
-			dbExchange.json_data_in.accumulate("command", dbExchange.command);
-			dbExchange.json_data_in.accumulate("full_name", jsonUserData.get("full_name"));
-			dbExchange.json_data_in.accumulate("email", jsonUserData.get("email"));
-			dbExchange.json_data_in.accumulate("dob", jsonUserData.get("dob"));
-			dbExchange.json_data_in.accumulate("gender", jsonUserData.get("gender"));
-			dbExchange.json_data_in.accumulate("height", jsonUserData.get("height"));
-			dbExchange.json_data_in.accumulate("hip_circumference", jsonUserData.get("hip_circumference"));
-			dbExchange.json_data_in.accumulate("weight", jsonUserData.get("weight"));
-			dbExchange.json_data_in.accumulate("target_weight", jsonUserData.get("target_weight"));
-			dbExchange.json_data_in.accumulate("fat", jsonUserData.get("fat"));
-			dbExchange.json_data_in.accumulate("target_fat", jsonUserData.get("target_fat"));
-			dbExchange.json_data_in.put("metric", user_bio.bMetricSystem ? 1 : 0);
+			//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
+			dbExchange.setUrl(new URL("http://192.168.1.102:8082/user/create"));
+			dbExchange.setCommand("send_user_data");
+			dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
+			dbExchange.getJson_data_in().put("full_name", jsonUserData.get("full_name"));
+			dbExchange.getJson_data_in().put("email", jsonUserData.get("email"));
+			dbExchange.getJson_data_in().put("dob", jsonUserData.get("dob"));
+			dbExchange.getJson_data_in().put("gender", jsonUserData.get("gender"));
+			dbExchange.getJson_data_in().put("height", jsonUserData.get("height"));
+			dbExchange.getJson_data_in().put("hip_circumference", jsonUserData.get("hip_circumference"));
+			dbExchange.getJson_data_in().put("weight", jsonUserData.get("weight"));
+			dbExchange.getJson_data_in().put("target_weight", jsonUserData.get("target_weight"));
+			dbExchange.getJson_data_in().put("fat", jsonUserData.get("fat"));
+			dbExchange.getJson_data_in().put("target_fat", jsonUserData.get("target_fat"));
+			dbExchange.getJson_data_in().put("metric", user_bio.isBMetricSystem() ? 1 : 0);
 			String hash = dbExchange.getHash();
 			available.release();
 			for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
 				dataok = sendServerDataServiceRequest(hash);
 			}
 		}
+
+		writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: email: %s", email));
+		writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: password: %s", password));
+
+		mAuth.createUserWithEmailAndPassword(email, password)
+			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+				@Override
+				public void onComplete(@NonNull Task<AuthResult> task) {
+					writeLog("createUserWithEmail:onComplete:" + task.isSuccessful());
+
+					// If sign in fails, display a message to the user. If sign in succeeds
+					// the auth state listener will be notified and logic to handle the
+					// signed in user can be handled in the listener.
+					if (!task.isSuccessful()) {
+						writeLog("createUserWithEmail:onComplete: FAILED: task.isSuccessful(): " + task.isSuccessful());
+						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_SHORT).show();
+					}
+				}
+			});
 		return 0;
 	}
 
@@ -818,26 +879,27 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady() && (mIsSignedIn || mIsEmailSignedIn)) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-				dbExchange.command = "change_user_data";
-				dbExchange.json_data_in.accumulate("command", dbExchange.command);
-				dbExchange.json_data_in.accumulate("full_name", jsonUserData.get("full_name"));
-				dbExchange.json_data_in.accumulate("email", jsonUserData.get("email"));
-				dbExchange.json_data_in.accumulate("logged", "true");
-				dbExchange.json_data_in.accumulate("dob", jsonUserData.get("dob"));
-				dbExchange.json_data_in.accumulate("gender", jsonUserData.get("gender"));
-				dbExchange.json_data_in.accumulate("height", jsonUserData.get("height"));
-				dbExchange.json_data_in.accumulate("hip_circumference", jsonUserData.get("hip_circumference"));
-				dbExchange.json_data_in.accumulate("weight", jsonUserData.get("weight"));
-				dbExchange.json_data_in.accumulate("target_weight", jsonUserData.get("target_weight"));
-				dbExchange.json_data_in.accumulate("fat", jsonUserData.get("fat"));
-				dbExchange.json_data_in.accumulate("target_fat", jsonUserData.get("target_fat"));
-				dbExchange.json_data_in.accumulate("metric", user_bio.bMetricSystem ? 1 : 0);
-				dbExchange.json_data_in.accumulate("recovery_heart_rate", user_bio.recovery_hr);
-				dbExchange.json_data_in.accumulate("resting_heart_rate", user_bio.resting_hr);
+				//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
+				dbExchange.setUrl(new URL("http://192.168.1.102:8082/health"));
+				dbExchange.setCommand("change_user_data");
+				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
+				dbExchange.getJson_data_in().put("full_name", jsonUserData.get("full_name"));
+				dbExchange.getJson_data_in().put("email", jsonUserData.get("email"));
+				dbExchange.getJson_data_in().put("logged", "true");
+				dbExchange.getJson_data_in().put("dob", jsonUserData.get("dob"));
+				dbExchange.getJson_data_in().put("gender", jsonUserData.get("gender"));
+				dbExchange.getJson_data_in().put("height", jsonUserData.get("height"));
+				dbExchange.getJson_data_in().put("hip_circumference", jsonUserData.get("hip_circumference"));
+				dbExchange.getJson_data_in().put("weight", jsonUserData.get("weight"));
+				dbExchange.getJson_data_in().put("target_weight", jsonUserData.get("target_weight"));
+				dbExchange.getJson_data_in().put("fat", jsonUserData.get("fat"));
+				dbExchange.getJson_data_in().put("target_fat", jsonUserData.get("target_fat"));
+				dbExchange.getJson_data_in().put("metric", user_bio.isBMetricSystem() ? 1 : 0);
+				dbExchange.getJson_data_in().put("recovery_heart_rate", user_bio.getResting_hr());
+				dbExchange.getJson_data_in().put("resting_heart_rate", user_bio.getResting_hr());
 				String hash = dbExchange.getHash();
 				available.release();
-				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.json_data_in));
+				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.getJson_data_in()));
 				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
 					dataok = sendServerDataServiceRequest(hash);
 				}
@@ -855,13 +917,14 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (isServerReady() && (mIsSignedIn || mIsEmailSignedIn)) {
 			available.acquire();
 			dbExchange.clear();
-			dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-			dbExchange.command = "get_run_info";
+			//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
+			dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
+			dbExchange.setCommand("get_run_info");
 			Date dnow = new Date();
-			dbExchange.json_data_in.accumulate("command", dbExchange.command);
-			dbExchange.json_data_in.accumulate("uid", user_bio.uid);
-			dbExchange.json_data_in.accumulate("session_id", user_bio.session_id);
-			dbExchange.json_data_in.accumulate("runid", run_id);
+			dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
+			dbExchange.getJson_data_in().put("uid", user_bio.getUid());
+			dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
+			dbExchange.getJson_data_in().put("runid", run_id);
 			String hash = dbExchange.getHash();
 			available.release();
 			if (activityListMap.containsKey(run_id)) {
@@ -890,11 +953,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady()) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-				dbExchange.command = "get_all_run_info";
-				dbExchange.json_data_in.accumulate("command", dbExchange.command);
-				dbExchange.json_data_in.accumulate("uid", user_bio.uid);
-				dbExchange.json_data_in.accumulate("session_id", user_bio.session_id);
+				//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
+				dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
+				dbExchange.setCommand("get_all_run_info");
+				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
+				dbExchange.getJson_data_in().put("uid", user_bio.getUid());
+				dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
 				String hash = dbExchange.getHash();
 				available.release();
 				sendServerDataServiceRequest(hash);
@@ -907,20 +971,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		mGoogleApiClient.connect();
-		// ATTENTION: This was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		Action viewAction = Action.newAction(
-			Action.TYPE_VIEW, // TODO: choose an action type.
-			"Main Page", // TODO: Define a title for the content shown.
-			// TODO: If you have web page content that matches this app activity's content,
-			// make sure this auto-generated web page URL is correct.
-			// Otherwise, set the URL to null.
-			mWebUrl = Uri.parse("http://www.runtracer.com/"),
-			// TODO: Make sure this auto-generated app deep link URI is correct.
-			mAppUri = Uri.parse("android-app://com.runtracer/http/host/path")
-		);
-		AppIndex.AppIndexApi.start(mGoogleApiClient, viewAction);
+		mAuth.addAuthStateListener(mAuthListener);
 	}
 
 	//Bluetooth support
@@ -934,15 +985,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 	//end of bluetooth support
 
-	// [RESUME on_start_on_stop]
 	@Override
 	protected void onResume() {
 		super.onResume();
-		mGoogleApiClient.reconnect();
 		registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
 		isBluetoothLeRegistered = true;
 		if (mBluetoothLeService != null) {
-			final boolean result = mBluetoothLeService.connect(mDeviceAddress);
+			mBluetoothLeService.connect(mDeviceAddress);
 		}
 	}
 
@@ -955,6 +1004,49 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 	// [END on_save_instance_state]
 
+
+	private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+		writeLog("firebaseAuthWithGoogle:" + acct.getId());
+		AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+		mAuth.signInWithCredential(credential)
+			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+				@Override
+				public void onComplete(@NonNull Task<AuthResult> task) {
+					if (task.isSuccessful()) {
+						// Sign in success, update UI with the signed-in user's information
+						Log.d(TAG, "signInWithCredential:success");
+						FirebaseUser user = mAuth.getCurrentUser();
+						if (user != null) {
+							user_bio.setFull_name(user.getDisplayName());
+							user_bio.setEmail(user.getEmail());
+							user_bio.setFull_name(user.getDisplayName());
+						}
+						getOauth2Token(user_bio.toJSON());
+						updateUI();
+					} else {
+						// If sign in fails, display a message to the user.
+						Log.w(TAG, "signInWithCredential:failure", task.getException());
+						Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
+						updateUI();
+					}
+				}
+			});
+
+	}
+
+	private void handleSignInResult(GoogleSignInResult result) {
+		Log.d(TAG, "handleSignInResult:" + result.isSuccess());
+		if (result.isSuccess()) {
+			// Signed in successfully, show authenticated UI.
+			GoogleSignInAccount acct = result.getSignInAccount();
+			firebaseAuthWithGoogle(acct);
+			if (acct != null) {
+				mStatus.setText(getString(R.string.signed_in_fmt, acct.getDisplayName()));
+				updateUI();
+			}
+		}
+	}
+
 	// [START on_activity_result]
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -963,10 +1055,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			writeLog(String.format(Locale.US, "onActivityResult: requestCode= %d, RC_SIGN_IN= %d", requestCode, RC_SIGN_IN));
 			writeLog(String.format(Locale.US, "onActivityResult: Intent data: %s", data != null ? data.toString() : "yep, it's actually null"));
 			mIsResolving = false;
-			if (!mGoogleApiClient.isConnected()) {
-				writeLog(String.format(Locale.US, "onActivityResult: mGoogleApiClient.isConnected(): %b \tmGoogleApiClient.reconnect(); ...", mGoogleApiClient.isConnected()));
-				mGoogleApiClient.reconnect();
-			}
+			GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+			handleSignInResult(result);
 		}
 		if (requestCode == NEW_USER_DATA && resultCode == RESULT_OK) {
 			Bundle userData;
@@ -1011,7 +1101,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					assert userData != null;
 					if (userData.getString("user_data") != null) {
 						jsonUserData = new JSONObject(userData.getString("user_data"));
-						jsonUserData.accumulate("logged", "false");
+						jsonUserData.put("logged", "false");
 						authUser(jsonUserData);
 					}
 				}
@@ -1082,107 +1172,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	@Override
-	public void onConnected(Bundle bundle) {
-		String accountEmail = "";
-		String name = "";
-		writeLog(String.format(Locale.US, "onConnected: bundle: %s", (bundle != null) ? bundle.toString() : ""));
-		// onConnected indicates that an account was selected on the device, that the selected
-		// account has granted any requested permissions to our app and that we were able to
-		// establish a service connection to Google Play services.
-		if (Plus.PeopleApi.getCurrentPerson(mGoogleApiClient) != null) {
-			accountEmail = Plus.AccountApi.getAccountName(mGoogleApiClient);
-			name = Plus.PeopleApi.getCurrentPerson(mGoogleApiClient).getDisplayName();
-			writeLog(String.format(Locale.US, "onConnected: name: %s", name));
-			writeLog(String.format(Locale.US, "onConnected: accountEmail: %s", accountEmail));
-		}
-		try {
-			JSONObject jsonData = new JSONObject("{\"key\":\"data\"}");
-			try {
-				jsonData.accumulate("full_name", name);
-				jsonData.accumulate("email", accountEmail);
-				jsonData.accumulate("passwd", "");
-				jsonData.accumulate("logged", "true");
-			} catch (JSONException e) {
-				writeLog("onConnected:01: " + "JSONException: " + e.toString());
-				e.printStackTrace();
-			}
-			authUser(jsonData);
-			updateUI();
-		} catch (Exception e) {
-			e.fillInStackTrace();
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public void onConnectionSuspended(int i) {
-		// The connection to Google Play services was lost. The GoogleApiClient will automatically
-		// attempt to re-connect. Any UI elements that depend on connection to Google APIs should
-		// be hidden or disabled until onConnected is called again.
-		mGoogleApiClient.connect();
-	}
-
-	// [START on_connection_failed]
-	@Override
-	public void onConnectionFailed(ConnectionResult connectionResult) {
-		// Could not connect to Google Play Services.  The user needs to select an account, grant permissions or resolve an error in order to sign in.
-		// Refer to the javadoc for ConnectionResult to see possible error codes.
-		if (!mIsResolving && mShouldResolve) {
-			if (connectionResult.hasResolution()) {
-				try {
-					connectionResult.startResolutionForResult(this, RC_SIGN_IN);
-					mIsResolving = true;
-				} catch (IntentSender.SendIntentException e) {
-					mIsResolving = false;
-					mGoogleApiClient.connect();
-					e.printStackTrace();
-				}
-			} else {
-				// Could not resolve the connection result, show the user an error dialog.
-				showErrorDialog(connectionResult);
-			}
-		} else {
-			// Show the signed-out UI
-			updateUI();
-		}
-	}
-	// [END on_connection_failed]
-
-	private void showErrorDialog(ConnectionResult connectionResult) {
-		int errorCode = connectionResult.getErrorCode();
-
-		if (GooglePlayServicesUtil.isUserRecoverableError(errorCode)) {
-			// Show the default Google Play services error dialog which may still start an intent
-			// on our behalf if the user can resolve the issue.
-			GooglePlayServicesUtil.getErrorDialog(errorCode, this, RC_SIGN_IN,
-				new DialogInterface.OnCancelListener() {
-					@Override
-					public void onCancel(DialogInterface dialog) {
-						mShouldResolve = false;
-						updateUI();
-					}
-				}).show();
-		} else {
-			// No default Google Play Services error, display a message to the user.
-			String errorString = getString(R.string.play_services_error_fmt, errorCode);
-			Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
-
-			mShouldResolve = false;
-			updateUI();
-		}
-	}
-
-	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
 			case R.id.sign_in_button:
-				// User clicked the sign-in button, so begin the sign-in process and automatically
-				// attempt to resolve any errors that occur.
+				this.signIn();
 				mStatus.setText(R.string.signing_in);
-				// [START sign_in_clicked]
-				mShouldResolve = true;
-				mGoogleApiClient.connect();
-				// [END sign_in_clicked]
 				break;
 
 			case R.id.new_user_button:
@@ -1231,11 +1225,10 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_resting_hr_button:
-				writeLog(String.format(Locale.US, "clicked button: user_resting_hr_button: user_bio.rhr_state: %d", user_bio.rhr_state));
-				if (user_bio.rhr_state == MEASURING) {
-					user_bio.rhr_state = READY;
+				if (user_bio.getRhr_state() == MEASURING) {
+					user_bio.setRhr_state(READY);
 				} else {
-					user_bio.rhr_state = MEASURING;
+					user_bio.setRhr_state(MEASURING);
 				}
 				break;
 
@@ -1248,15 +1241,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_unit_system:
-				user_bio.bMetricSystem = mMetricSystem.isChecked();
+				user_bio.setBMetricSystem(mMetricSystem.isChecked());
 				updateUI();
 				break;
 
 			case R.id.sign_out_button:
-				if (mIsSignedIn && mGoogleApiClient.isConnected()) {
-					Plus.AccountApi.revokeAccessAndDisconnect(mGoogleApiClient);
-					mGoogleApiClient.disconnect();
-				}
+				FirebaseAuth.getInstance().signOut();
 				user_bio.clean();
 				activityListMap.clear();
 				activityInfoMap.clear();
@@ -1267,26 +1257,16 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	}
 
+	private void signIn() {
+		Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+		startActivityForResult(signInIntent, RC_SIGN_IN);
+	}
+
 	public int aboutYou() {
 		Intent intent = new Intent(this, About.class);
 		intent.putExtra("UserData", user_bio);
 		startActivityForResult(intent, ABOUT_YOU);
 		return (0);
-	}
-
-	@Override
-	public void onResult(People.LoadPeopleResult peopleData) {
-		if (peopleData.getStatus().getStatusCode() == CommonStatusCodes.SUCCESS) {
-			PersonBuffer personBuffer = peopleData.getPersonBuffer();
-			try {
-				int count = personBuffer.getCount();
-				for (int i = 0; i < count; i++) {
-					new RetrieveTokenTask().execute(personBuffer.get(i).getId());
-				}
-			} finally {
-				personBuffer.close();
-			}
-		}
 	}
 
 	public void writeLog(String msg) {
@@ -1373,8 +1353,28 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		registerReceiver(receiver, mServerDBfilter);
 	}
 
+	@Override
+	public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
-	protected class ResponseReceiver extends BroadcastReceiver {
+	}
+
+	@Override
+	public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+		FirebaseUser user = firebaseAuth.getCurrentUser();
+		if (user != null) {
+			writeLog("onAuthStateChanged:signed_in:" + user.getUid());
+			mIsEmailSignedIn = true;
+			mIsAuthenticated = true;
+			mStatus.setText("signed_in:" + user.getEmail());
+			user_bio.setEmail(user.getEmail());
+			user_bio.setFull_name(user.getDisplayName());
+			user_bio.setStatus(user.getUid());
+		} else {
+			writeLog("onAuthStateChanged:signed_out");
+		}
+	}
+
+	public class ResponseReceiver extends BroadcastReceiver {
 		public static final String ACTION_RESP = "com.runtracer.intent.action.MESSAGE_PROCESSED";
 
 		/**
@@ -1400,11 +1400,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		public void onReceive(Context context, Intent intent) {
 			String response;
 			response = intent.getStringExtra("param_out_msg");
-			writeLog("MainActivity: ResponseReceiver: onReceive: json_data_in: " + dbExchange.json_data_in);
-			writeLog("MainActivity: ResponseReceiver: onReceive json_data_out: " + dbExchange.json_data_out);
+			writeLog("MainActivity: ResponseReceiver: onReceive: json_data_in: " + dbExchange.getJson_data_in());
+			writeLog("MainActivity: ResponseReceiver: onReceive getJson_data_out(): " + dbExchange.getJson_data_out());
 
 			if (response.compareTo(lastHash) == 0) {
-				dbExchange.pending = false;
+				dbExchange.setPending(false);
 			} else {
 				writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: onReceive: response.compareTo(lastHash) == 0: %b ", (response.compareTo(lastHash) == 0)));
 			}
@@ -1429,20 +1429,18 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 							run_info.writeJSON(json_run_info);
 							activityInfoMap.put(run_id, run_info);
 							activityListMap.put(run_id, dnow.getTime() * 2); //unix time now x 2
-							writeLog(String.format(Locale.US, "updateRunInfo: 01: total_runs: %d ", user_bio.total_runs));
-							user_bio.total_runs = activityInfoMap.size();
-							writeLog(String.format(Locale.US, "updateRunInfo: 02: total_runs: %d ", user_bio.total_runs));
+							user_bio.setTotal_runs(activityInfoMap.size());
 							user_bio.getValues();
 							update_result = true;
 						}
 					} else {
 						run_info = (RunData) activityInfoMap.get(run_id);
-						user_bio.total_runs = activityInfoMap.size();
+						user_bio.setTotal_runs(activityInfoMap.size());
 					}
 				}
 			}
-			user_bio.total_distance_km += run_info.distance_km_v;
-			user_bio.total_calories += run_info.calories_v_distance;
+			user_bio.setTotal_distance_km(user_bio.getTotal_distance_km() + run_info.getDistance_km_v());
+			user_bio.setTotal_calories(user_bio.getTotal_calories() + run_info.getCalories_v_distance());
 			return update_result;
 		}
 
@@ -1452,9 +1450,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			JSONObject json_run_info;
 			boolean eof = false;
 			RunData crun = new RunData();
-			user_bio.total_distance_km = 0;
-			user_bio.total_distance_miles = 0;
-			user_bio.total_calories = 0;
+			user_bio.setTotal_distance_km(0);
+			user_bio.setTotal_distance_miles(0);
+			user_bio.setTotal_calories(0);
 			writeLog("updateAllRunInfo(JSONObject json_all_run_info): isUpdated being set to true.");
 			isUpdated = true;
 			for (rowidx = 0; !eof; rowidx++) {
@@ -1463,7 +1461,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					String key = String.format(Locale.US, "(%d:%d)", colidx, rowidx);
 					if (!json_all_run_info.isNull(key)) {
 						String newkey = crun.getKeyName(colidx);
-						json_run_info.accumulate(newkey, json_all_run_info.get(key));
+						json_run_info.put(newkey, json_all_run_info.get(key));
 					} else {
 						if (colidx == 0) {
 							eof = true;
@@ -1486,7 +1484,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			Boolean bUserStatusReady;
 			Boolean bUserValidated = false;
 			int sender = 0;
-			if (dbEx.error_no > 0) {
+			writeLog(String.format(Locale.CANADA, "processResponse: dbEx.getAttemptNo(): %d", dbEx.getAttemptNo()));
+			if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() < dbEx.getMaxAttempts()) {
 				final DataBaseExchange retry = (DataBaseExchange) dbEx.clone();
 				Handler handler = new Handler();
 				handler.postDelayed(new Runnable() {
@@ -1494,29 +1493,31 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					public void run() {
 						available.release();
 						try {
-							sendServerDataServiceRequest(retry.hash);
+							sendServerDataServiceRequest(retry.getHash());
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
 				}, 20000);
 				Snackbar.make(findViewById(android.R.id.content), "Connectivity problem, could not update the server, retrying in 20 secs.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+			} else {
+				dbEx = DataBaseExchange.createDataBaseExchange();
 			}
 
-			if (dbEx.json_data_out.isNull("status") || dbEx.json_data_out.isNull("created") || dbEx.json_data_out.isNull("sender")) {
-				user_bio.status = "0";
-				user_bio.created = "0";
+			if (dbEx.getJson_data_out()==null || dbEx.getJson_data_out().isNull("status") || dbEx.getJson_data_out().isNull("created") || dbEx.getJson_data_out().isNull("sender")) {
+				user_bio.setStatus("0");
+				user_bio.setCreated("0");
 				return;
 			} else {
 				try {
-					if (!dbEx.json_data_out.isNull("status")) {
-						user_bio.status = dbEx.json_data_out.get("status").toString();
+					if (!dbEx.getJson_data_out().isNull("status")) {
+						user_bio.setStatus(dbEx.getJson_data_out().get("status").toString());
 					}
-					if (!dbEx.json_data_out.isNull("created")) {
-						user_bio.created = dbEx.json_data_out.get("created").toString();
+					if (!dbEx.getJson_data_out().isNull("created")) {
+						user_bio.setCreated(dbEx.getJson_data_out().get("created").toString());
 					}
-					if (!dbEx.json_data_out.isNull("sender") && dbEx.json_data_out.get("sender") instanceof Integer) {
-						sender = dbEx.json_data_out.getInt("sender");
+					if (!dbEx.getJson_data_out().isNull("sender") && dbEx.getJson_data_out().get("sender") instanceof Integer) {
+						sender = dbEx.getJson_data_out().getInt("sender");
 					}
 				} catch (JSONException e) {
 					writeLog(String.format(Locale.US, "processResponse: Exception 01: %s", e.toString()));
@@ -1525,22 +1526,22 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				}
 			}
 			try {
-				if (!dbEx.json_data_out.isNull("status") && !dbEx.json_data_out.isNull("sender")) {
-					user_bio.status = dbEx.json_data_out.get("status").toString();
+				if (!dbEx.getJson_data_out().isNull("status") && !dbEx.getJson_data_out().isNull("sender")) {
+					user_bio.setStatus(dbEx.getJson_data_out().get("status").toString());
 				}
-				if (!dbEx.json_data_out.isNull("created") && !dbEx.json_data_out.isNull("sender")) {
-					user_bio.created = dbEx.json_data_out.get("created").toString();
+				if (!dbEx.getJson_data_out().isNull("created") && !dbEx.getJson_data_out().isNull("sender")) {
+					user_bio.setCreated(dbEx.getJson_data_out().get("created").toString());
 				}
-				if (!dbEx.json_data_out.isNull("validated") && dbEx.json_data_out.get("validated") instanceof Integer && !dbEx.json_data_out.isNull("sender")) {
-					bUserValidated = 1 == dbEx.json_data_out.getInt("validated");
+				if (!dbEx.getJson_data_out().isNull("validated") && dbEx.getJson_data_out().get("validated") instanceof Integer && !dbEx.getJson_data_out().isNull("sender")) {
+					bUserValidated = 1 == dbEx.getJson_data_out().getInt("validated");
 				}
 			} catch (JSONException e) {
 				writeLog(String.format(Locale.US, "processResponse: Exception 02: %s", e.toString()));
 				e.printStackTrace();
 			}
 			user_bio.getValues();
-			bUserAlreadyCreated = (user_bio.created_v.after(new Date(0)) || user_bio.created.compareTo("1") == 0);
-			bUserStatusReady = !(user_bio.status.compareTo("0") == 0);
+			bUserAlreadyCreated = (user_bio.getCreated_v().after(new Date(0)) || user_bio.getCreated().compareTo("1") == 0);
+			bUserStatusReady = !(user_bio.getStatus().compareTo("0") == 0);
 
 			mIsEmailSignedIn = bUserAlreadyCreated && bUserStatusReady && !mIsSignedIn;
 			if (!bUserAlreadyCreated) {
@@ -1567,9 +1568,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					if (bUserAlreadyCreated && bUserStatusReady) {
 						mIsEmailSignedIn = !mIsSignedIn;
 						mIsAuthenticated = true;
-						user_bio.writeJSON(dbEx.json_data_out);
-						mMetricSystem.setChecked(user_bio.bMetricSystem);
-						writeLog(String.format(Locale.US, "processResponse: auth_user: %s", user_bio.email));
+						user_bio.writeJSON(dbEx.getJson_data_out());
+						mMetricSystem.setChecked(user_bio.isBMetricSystem());
 						writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
 						getRunData(!isUpdated);
 						updateUI();
@@ -1578,20 +1578,20 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 							JSONObject jsonData;
 							try {
 								jsonData = new JSONObject("{\"key\":\"data\"}");
-								jsonData.accumulate("full_name", dbEx.full_name);
-								jsonData.accumulate("email", dbEx.accountEmail);
-								jsonData.accumulate("passwd", "");
-								jsonData.accumulate("logged", "true");
-								jsonData.accumulate("is_signed_in", mIsSignedIn);
-								jsonData.accumulate("gender", user_bio.gender);
-								jsonData.accumulate("birthday", user_bio.birthday);
-								jsonData.accumulate("height", user_bio.height);
-								jsonData.accumulate("hip_circumference", user_bio.hip_circumference);
-								jsonData.accumulate("weight", user_bio.current_weight);
-								jsonData.accumulate("target_weight", user_bio.target_weight);
-								jsonData.accumulate("target_fat", user_bio.target_fat);
-								jsonData.accumulate("fat_percentage", user_bio.current_fat);
-								jsonData.accumulate("metric", user_bio.bMetricSystem ? 1 : 0);
+								jsonData.put("full_name", dbEx.getFull_name());
+								jsonData.put("email", dbEx.getAccountEmail());
+								jsonData.put("passwd", "");
+								jsonData.put("logged", "true");
+								jsonData.put("is_signed_in", mIsSignedIn);
+								jsonData.put("gender", user_bio.getGender());
+								jsonData.put("birthday", user_bio.getBirthday());
+								jsonData.put("height", user_bio.getHeight());
+								jsonData.put("hip_circumference", user_bio.getHip_circumference());
+								jsonData.put("weight", user_bio.getCurrent_weight());
+								jsonData.put("target_weight", user_bio.getTarget_weight());
+								jsonData.put("target_fat", user_bio.getTarget_fat());
+								jsonData.put("fat_percentage", user_bio.getCurrent_fat());
+								jsonData.put("metric", user_bio.isBMetricSystem() ? 1 : 0);
 								writeLog(String.format(Locale.US, "jsonData: %s", jsonData.toString()));
 								newUser(jsonData);
 							} catch (JSONException e) {
@@ -1605,7 +1605,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				case send_run_data:
 					if (mIsAuthenticated) {
 						getRunData(true);
-						JSONObject json= user_bio.createJSON();
+						JSONObject json = user_bio.createJSON();
 						writeLog(String.format(Locale.US, "processResponse: send_run_data: CALLING changeUserData: json: %s", json));
 						changeUserData(json);
 					}
@@ -1615,9 +1615,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					int max_run_history_sz = 2000;
 					for (int i = 0; i < max_run_history_sz; i++) {
 						String key = (String.format(Locale.US, "value_%d", i));
-						if (!dbEx.json_data_out.isNull(key)) {
+						if (!dbEx.getJson_data_out().isNull(key)) {
 							try {
-								String value = (String) dbEx.json_data_out.get(String.format(Locale.US, "value_%d", i));
+								String value = (String) dbEx.getJson_data_out().get(String.format(Locale.US, "value_%d", i));
 								getRunInfo(Integer.parseInt(value));
 							} catch (JSONException | MalformedURLException | InterruptedException e) {
 								writeLog(String.format(Locale.US, "processResponse: Exception 03: %s", e.toString()));
@@ -1632,9 +1632,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				case get_run_info:
 					try {
 						int runid_v;
-						String runid = (String) dbEx.json_data_out.get("runid");
+						String runid = (String) dbEx.getJson_data_out().get("runid");
 						runid_v = Integer.parseInt(runid);
-						updateRunInfo(runid_v, dbEx.json_data_out);
+						updateRunInfo(runid_v, dbEx.getJson_data_out());
 					} catch (JSONException | ParseException | IOException | NoSuchAlgorithmException e) {
 						writeLog(String.format(Locale.US, "processResponse: Exception 04: %s", e.toString()));
 						e.printStackTrace();
@@ -1643,7 +1643,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 				case get_all_run_info:
 					try {
-						updateAllRunInfo(dbEx.json_data_out);
+						updateAllRunInfo(dbEx.getJson_data_out());
 						updateUI();
 					} catch (JSONException | ParseException | IOException | NoSuchAlgorithmException e) {
 						writeLog(String.format(Locale.US, "processResponse: Exception 05: %s", e.toString()));
@@ -1667,44 +1667,44 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		public void onReceive(Context context, Intent intent) {
 			final String action = intent.getAction();
 			if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+				writeLog("MainActivity: BroadcastReceiver: action is" + action);
 			} else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
 				mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
 				mMeasureRHR.setEnabled(false);
-				writeLog(String.format(Locale.US, "hr data... \nuser_bio.hr_reading: %d \nuser_bio.current_hr: %f \nuser_bio.last_hr: %f", user_bio.hr_reading, user_bio.current_hr, user_bio.last_hr));
 			} else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
 				// Show all the supported services and characteristics on the user interface.
 				displayGattServices(mBluetoothLeService.getSupportedGattServices());
 				writeLog("BLE" + (mBluetoothLeService.getSupportedGattServices()).toString());
-				user_bio.hr_reading = 0;
+				user_bio.setHr_reading(0);
 			} else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
 				String data = (intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
 				TextView t = (TextView) findViewById(R.id.heart_rate_value);
 				t.setText(data);
-				user_bio.current_hr = Double.parseDouble(data);
-				user_bio.hr_reading++;
-				if (user_bio.hr_reading > user_bio.RESTING_NO_READINGS && user_bio.current_hr < user_bio.RESTING_HR_MAX && user_bio.current_hr > user_bio.RESTING_HR_MIN) {
+				user_bio.setCurrent_hr(Double.parseDouble(data));
+				user_bio.setHr_reading(user_bio.getHr_reading() + 1);
+				if (user_bio.getHr_reading() > user_bio.getRESTING_NO_READINGS() && user_bio.getCurrent_hr() < user_bio.getRESTING_HR_MAX() && user_bio.getCurrent_hr() > user_bio.getRESTING_HR_MIN()) {
 					mMeasureRHR.setEnabled(true);
 					mMeasureRHR.setVisibility(Button.VISIBLE);
 				} else {
 					mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
 				}
-				if ((user_bio.last_hr < (user_bio.current_hr - user_bio.RESTING_HR_MARGIN)) || (user_bio.last_hr > (user_bio.current_hr + user_bio.RESTING_HR_MARGIN))) {
-					user_bio.last_hr = -1;
-					user_bio.hr_reading = 0;
+				if ((user_bio.getLast_hr() < (user_bio.getCurrent_hr() - user_bio.getRESTING_HR_MARGIN())) || (user_bio.getLast_hr() > (user_bio.getCurrent_hr() + user_bio.getRESTING_HR_MARGIN()))) {
+					user_bio.setLast_hr(-1);
+					user_bio.setHr_reading(0);
 				} else {
-					if (user_bio.rhr_state == READY) {
-						user_bio.resting_hr = user_bio.current_hr;
-						user_bio.rhr_state = ACQUIRED;
+					if (user_bio.getRhr_state() == READY) {
+						user_bio.setResting_hr(user_bio.getCurrent_hr());
+						user_bio.setRhr_state(ACQUIRED);
 						user_bio.getValues();
 						updateUI();
 					}
 				}
-				if (user_bio.rhr_state == MEASURING) {
-					mMeasureRHR.setText(String.format(Locale.getDefault(), "OK? (%.0f)", user_bio.current_hr));
+				if (user_bio.getRhr_state() == MEASURING) {
+					mMeasureRHR.setText(String.format(Locale.getDefault(), "OK? (%.0f)", user_bio.getCurrent_hr()));
 				} else {
 					mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
 				}
-				user_bio.last_hr = user_bio.current_hr;
+				user_bio.setLast_hr(user_bio.getCurrent_hr());
 			}
 		}
 	};

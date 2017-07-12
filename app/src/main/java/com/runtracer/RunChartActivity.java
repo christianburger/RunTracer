@@ -98,7 +98,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 
 	private String generateJSCode(int c_width, int c_height) throws UnsupportedEncodingException {
 		String code = "";
-		long starting_time = run_data.run_date_start_v.getTime();
+		long starting_time = run_data.getRun_date_start_v().getTime();
 		NumberFormat nf= NumberFormat.getInstance(Locale.CANADA);
 		code += "\n";
 		code += "<html>";
@@ -121,7 +121,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "		data.addColumn('number', 'Heart Beat (Hz)');";
 		code += "\n";
-		if (user_data.bMetricSystem) {
+		if (user_data.isBMetricSystem()) {
 			code += "		data.addColumn('number', 'Speed (km/h)');";
 		} else {
 			code += "		data.addColumn('number', 'Speed (miles/h)');";
@@ -133,24 +133,24 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "		data.addRows([";
 		code += "\n";
-		writeLog(String.format("RunChartActivity: received: runtrace:"));
-		if (run_data.runtrace != null && run_data.runtrace.size() >0) {
-			List keys = (List<Long>) new ArrayList(run_data.runtrace.keySet());
+		writeLog("RunChartActivity: received: runtrace:");
+		if (run_data.getRuntrace()!= null && run_data.getRuntrace().size() >0) {
+			List keys = (List<Long>) new ArrayList(run_data.getRuntrace().keySet());
 			Collections.sort(keys);
 			Iterator it = keys.iterator();
 			for (; it.hasNext(); ) {
 				double speed;
 				RunInstant tmp_instant = new RunInstant();
-				tmp_instant = run_data.runtrace.get(it.next());
-				if (user_data.bMetricSystem) {
+				tmp_instant = run_data.getRuntrace().get(it.next());
+				if (user_data.isBMetricSystem()) {
 					speed=tmp_instant.current_motion_speed_km_h_v * run_data.conv_km_miles / run_data.conv_km_miles;
 				} else {
 					speed=tmp_instant.current_motion_speed_km_h_v * run_data.conv_km_miles;
 				}
-				code += String.format("\n[%d, %d, %s, %s, %s],", (tmp_instant.current_time - starting_time) / 1000, tmp_instant.current_heart_rate, nf.format(speed), nf.format(tmp_instant.calories_v_distance), nf.format(tmp_instant.calories_v_heart_beat));
+				code += String.format(Locale.CANADA, "\n[%d, %d, %s, %s, %s],", (tmp_instant.current_time - starting_time) / 1000, tmp_instant.current_heart_rate, nf.format(speed), nf.format(tmp_instant.calories_v_distance), nf.format(tmp_instant.calories_v_heart_beat));
 			}
 		} else {
-			writeLog(String.format("RunChartActivity: error: run_data.runtrace: %b", run_data.runtrace!=null));
+			writeLog(String.format("RunChartActivity: error: run_data.runtrace: %b", run_data.getRuntrace()!=null));
 		}
 		code += "\n";
 		code += "		]);";
@@ -159,15 +159,15 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "			chart: {";
 		code += "\n";
-		code += String.format("			title: 'Details of your run on %s', ", run_data.run_date_start);
+		code += String.format("			title: 'Details of your run on %s', ", run_data.getRun_date_start());
 		code += "\n";
 		code += "   curveType: 'function'";
 		code += "\n";
 		code += "		},";
 		code += "\n";
-		code += String.format("		width:%d,", c_width);
+		code += String.format(Locale.CANADA, "		width:%d,", c_width);
 		code += "\n";
-		code += String.format("		height:%d,", c_height);
+		code += String.format(Locale.CANADA, "		height:%d,", c_height);
 		code += "\n";
 		code += "			axes: {";
 		code += "\n";
@@ -208,7 +208,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 	private String generateJSMapCode(int c_width, int c_height) throws UnsupportedEncodingException {
 		String code = "";
 		NumberFormat nf= NumberFormat.getInstance(Locale.CANADA);
-		List keys = (List<Long>) new ArrayList(run_data.runtrace.keySet());
+		List keys = (List<Long>) new ArrayList(run_data.getRuntrace().keySet());
 		Collections.sort(keys);
 		Iterator it = keys.iterator();
 
@@ -234,8 +234,8 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 
 		for (; it.hasNext(); ) {
 			RunInstant tmp_instant = new RunInstant();
-			tmp_instant = (RunInstant) run_data.runtrace.get(it.next());
-			code += String.format("\n[%s, %s, 'time: %d" + "s'],", nf.format(tmp_instant.latitude), nf.format(tmp_instant.longitude), (tmp_instant.current_time - run_data.getStartTime_v())/1000);
+			tmp_instant = (RunInstant) run_data.getRuntrace().get(it.next());
+			code += String.format(Locale.CANADA, "\n[%s, %s, 'time: %d" + "s'],", nf.format(tmp_instant.latitude), nf.format(tmp_instant.longitude), (tmp_instant.current_time - run_data.getStartTime_v())/1000);
 		}
 
 	//	code += "		[37.4422, -122.1731, 'Shopping'] ";
@@ -254,7 +254,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "	<body> ";
 		code += "\n";
-		code += String.format("	<div id=\"map_div\" style=\"width: %dpx; height: %dpx\"></div> ", c_width, c_height);
+		code += String.format(Locale.CANADA, "	<div id=\"map_div\" style=\"width: %dpx; height: %dpx\"></div> ", c_width, c_height);
 		code += "\n";
 		code += "	</body> ";
 		code += "\n";
@@ -316,7 +316,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		}
 	}
 
-	public class WebAppInterface {
+	private class WebAppInterface {
 		Context mContext;
 
 		/** Instantiate the interface and set the context */

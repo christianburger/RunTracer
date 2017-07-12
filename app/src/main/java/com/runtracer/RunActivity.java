@@ -1,5 +1,6 @@
 package com.runtracer;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
@@ -34,6 +35,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
+import android.support.v4.app.ActivityCompat;
 import android.text.format.DateFormat;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -47,6 +49,9 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.runtracer.services.BluetoothLeService;
+import com.runtracer.services.ServerDataService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -205,6 +210,16 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 	private int countSatellites() {
 		int count = 0;
+		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+			// TODO: Consider calling
+			//    ActivityCompat#requestPermissions
+			// here to request the missing permissions, and then overriding
+			//   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+			//                                          int[] grantResults)
+			// to handle the case where the user grants the permission. See the documentation
+			// for ActivityCompat#requestPermissions for more details.
+			return -1;
+		}
 		gpsStatus = locationManager.getGpsStatus(null);
 		for (GpsSatellite sat : gpsStatus.getSatellites()) {
 			if (sat.usedInFix()) {
@@ -238,6 +253,16 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		//GPS data acquired and monitored.
 		/********** get Gps location service LocationManager object ***********/
 		locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+		if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+			// TODO: Consider calling
+			//    ActivityCompat#requestPermissions
+			// here to request the missing permissions, and then overriding
+			//   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+			//                                          int[] grantResults)
+			// to handle the case where the user grants the permission. See the documentation
+			// for ActivityCompat#requestPermissions for more details.
+			return;
+		}
 		previousLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
 		/*
@@ -266,12 +291,12 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			e.printStackTrace();
 		}
 
-		run_data.calories_v_distance = 0.0;
-		run_data.calories_v_heart_beat = 0.0;
+		run_data.setCalories_v_distance(0.0);
+		run_data.setCalories_v_heart_beat(0.0);
 
-		run_data.distance_km_v = 0.0;
-		run_data.average_speed_km_h_v = 0.0;
-		run_data.average_speed_miles_h_v = 0.0;
+		run_data.setDistance_km_v(0.0);
+		run_data.setAverage_speed_km_h_v(0.0);
+		run_data.setAverage_speed_miles_h_v(0.0);
 
 		time_initial = new Date().getTime();
 		this_time = new Date().getTime();
@@ -283,8 +308,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		user_bio = (UserData) getIntent().getSerializableExtra("UserData");
 
 		run_data.getValues();
-		run_data.current_weight_v = user_bio.current_weight_v;
-		run_data.current_fat_v = user_bio.current_fat_v;
+		run_data.setCurrent_weight_v(user_bio.getCurrent_weight_v());
+		run_data.setCurrent_fat_v(user_bio.getCurrent_fat_v());
 
 		setupGui();
 
@@ -305,10 +330,10 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 	private boolean measureRecoveryHeartRate() {
 		boolean bok = false;
-		if (run_data.current_heart_rate > user_bio.resting_hr && user_bio.resting_hr > user_bio.RESTING_HR_MIN) {
+		if (run_data.getCurrent_heart_rate()> user_bio.getResting_hr()&& user_bio.getRecovery_hr()> user_bio.getRESTING_HR_MIN()) {
 			this.bMeasuredPeak = true;
-			this.heart_rate_at_peak = run_data.current_heart_rate;
-			this.heart_rate_at_rest = run_data.current_heart_rate;
+			this.heart_rate_at_peak = run_data.getCurrent_heart_rate();
+			this.heart_rate_at_rest = run_data.getCurrent_heart_rate();
 		}
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
 		// set title
@@ -339,7 +364,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		AlertDialog alertDialog = alertDialogBuilder.create();
 		// show it
 		alertDialog.show();
-		return bok;
+		return false;
 	}
 
 	private void finishRun() throws InterruptedException, IOException, ParseException, NoSuchAlgorithmException, JSONException {
@@ -347,14 +372,14 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		sm.unregisterListener(this);
 		locationManager.removeUpdates(this);
 		//TODO: criteria to measure heart recovery rate
-		if (run_data.current_heart_rate > 10) {
+		if (run_data.getCurrent_heart_rate()> 10) {
 			measureRecoveryHeartRate();
 			new Handler().postDelayed(new Runnable() {
 				@Override
 				public void run() {
-					if (bMeasuredPeak && run_data.current_heart_rate > user_bio.target_hr_moderate && (heart_rate_at_peak - run_data.current_heart_rate) > 0) {
-						heart_rate_at_rest = run_data.current_heart_rate;
-						run_data.recovery_hr = heart_rate_at_peak - heart_rate_at_rest;
+					if (bMeasuredPeak && run_data.getCurrent_heart_rate() > user_bio.getTarget_hr_moderate()&& (heart_rate_at_peak - run_data.getCurrent_heart_rate()) > 0) {
+						heart_rate_at_rest = run_data.getCurrent_heart_rate();
+						run_data.setRecovery_hr(heart_rate_at_peak - heart_rate_at_rest);
 					}
 					try {
 						finishRunNow();
@@ -364,7 +389,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				}
 			}, 60000);
 		} else {
-			run_data.recovery_hr = 0;
+			run_data.setRecovery_hr(0);
 			finishRunNow();
 		}
 	}
@@ -372,8 +397,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	private void finishRunNow() throws InterruptedException, NoSuchAlgorithmException, ParseException, JSONException, IOException {
 		writeLog("finishRunNow!!");
 		sendRunData();
-		if (run_data.recovery_hr > 0) {
-			MainActivity.user_bio.recovery_hr = run_data.recovery_hr;
+		if (run_data.getRecovery_hr()> 0) {
+			MainActivity.user_bio.setRecovery_hr(run_data.getRecovery_hr());
 		}
 		setResult(RESULT_OK);
 		finish();
@@ -385,7 +410,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		if (isServerReady()) {
 			writeLog("sendServerDataServiceRequest: server ready!!");
 			MainActivity.available.acquire();
-			MainActivity.dbExchange.pending = true;
+			MainActivity.dbExchange.setPending(true);
 			MainActivity.available.release();
 			Intent mServiceIntent = new Intent(this, ServerDataService.class);
 			mServiceIntent.setAction(ServerDataService.ACTION_QUERY_SERVER);
@@ -401,7 +426,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		boolean result = false;
 		for (int attempts = 0; attempts < MAX_ATTEMPTS && !result; attempts++) {
 			MainActivity.available.acquire();
-			result = !MainActivity.dbExchange.pending;
+			result = !MainActivity.dbExchange.isPending();
 			MainActivity.available.release();
 		}
 		return result;
@@ -417,14 +442,14 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			run_data.getValues();
 			String json_run_data = run_data.createJSON().toString();
 			JSONObject json_run = new JSONObject(json_run_data);
-			MainActivity.dbExchange.url = new URL("http://www.runtracer.com/select.php");
-			MainActivity.dbExchange.command = "send_run_data";
-			MainActivity.dbExchange.full_name = user_bio.full_name;
-			MainActivity.dbExchange.accountEmail = user_bio.email;
-			MainActivity.dbExchange.json_data_in = json_run;
-			MainActivity.dbExchange.json_data_in.accumulate("command", MainActivity.dbExchange.command);
-			MainActivity.dbExchange.json_data_in.accumulate("uid", user_bio.uid);
-			MainActivity.dbExchange.json_data_in.accumulate("session_id", user_bio.session_id);
+			MainActivity.dbExchange.setUrl(new URL("http://www.runtracer.com/select.php"));
+			MainActivity.dbExchange.setCommand("send_run_data");
+			MainActivity.dbExchange.setFull_name(user_bio.getFull_name());
+			MainActivity.dbExchange.setAccountEmail(user_bio.getEmail());
+			MainActivity.dbExchange.setJson_data_in(json_run);
+			MainActivity.dbExchange.getJson_data_in().put("command", MainActivity.dbExchange.getCommand());
+			MainActivity.dbExchange.getJson_data_in().put("uid", user_bio.getUid());
+			MainActivity.dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
 			hash = MainActivity.dbExchange.getHash();
 			MainActivity.available.release();
 			result = sendServerDataServiceRequest(hash);
@@ -572,7 +597,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			final String action = intent.getAction();
 			if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
 			} else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-				run_data.current_heart_rate = -1;
+				run_data.setCurrent_heart_rate(-1);
 			} else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
 				// Show all the supported services and characteristics on the user interface.
 				displayGattServices(mBluetoothLeService.getSupportedGattServices());
@@ -581,7 +606,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				String data = (intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
 				TextView t = (TextView) findViewById(R.id.heart_rate_value);
 				t.setText(data);
-				run_data.current_heart_rate = Integer.parseInt(data);
+				run_data.setCurrent_heart_rate(Integer.parseInt(data));
 			}
 		}
 	};
@@ -741,7 +766,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	}
 
 	public void updateGui() {
-		if (user_bio.bMetricSystem) {
+		if (user_bio.isBMetricSystem()) {
 			mDistanceUnitsMotion.setText(R.string.unit_km);
 			mDistanceUnitsGPS.setText(R.string.unit_km);
 			mSpeedUnitsMotion.setText(R.string.unit_km_h);
@@ -821,8 +846,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 					break;
 
 				case R.id.run_indoor_value:
-					run_data.threadmill_factor = (btn_indoor.isChecked()) ? 0 : 0.84;
-					writeLog(String.format(Locale.US, "threadmill factor= %.2f", run_data.threadmill_factor));
+					run_data.setThreadmill_factor((btn_indoor.isChecked()) ? 0 : 0.84);
+					writeLog(String.format(Locale.US, "threadmill factor= %.2f", run_data.getThreadmill_factor()));
 					updateGui();
 					break;
 
@@ -883,7 +908,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			}
 			if (previousLocation != null) {
 				if (previousLocation.hasSpeed()) {
-					run_data.gps_distance_km += location.distanceTo(previousLocation) / 1000;
+					run_data.setGps_distance_km(run_data.getGps_distance_km() + location.distanceTo(previousLocation) / 1000);
 				}
 			}
 			previousLocation = location;
@@ -1040,8 +1065,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		accelerometer_last_value = accelerometer_value;
 		avg_acceleration = getAvgAcceleration(accelerometer_value);
 
-		mCaloriesDistance.setText(String.format(Locale.getDefault(), "%.2f", run_data.calories_v_distance));
-		mCaloriesHeartBeat.setText(String.format(Locale.getDefault(), "%.2f", run_data.calories_v_heart_beat));
+		mCaloriesDistance.setText(String.format(Locale.getDefault(), "%.2f", run_data.getCalories_v_distance()));
+		mCaloriesHeartBeat.setText(String.format(Locale.getDefault(), "%.2f", run_data.getCalories_v_heart_beat()));
 
 		mAccelerationBar.setProgress((int) (accelerometer_value * 10));
 		acceleration.setText(String.format("Status: %s", status));
@@ -1052,7 +1077,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		switch (state) {
 
 			case STATE_INITIAL:
-				run_data.current_speed_m_s_v = 0;
+				run_data.setCurrent_speed_m_s_v(0);
 				state = STATE_OUTSIDE;
 				break;
 
@@ -1061,8 +1086,8 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 				if ((time_now - time_end) > time_threshold) {
 					time_difference = time_now - time_end;
-					run_data.current_speed_m_s_v = (avg_distance / time_difference) * 1000;
-					run_data.current_speed_km_h_v = run_data.current_speed_m_s_v * run_data.conv_m_s_km_h;
+					run_data.setCurrent_speed_m_s_v((avg_distance / time_difference) * 1000);
+					run_data.setCurrent_speed_km_h_v(run_data.getCurrent_speed_m_s_v() * run_data.conv_m_s_km_h);
 				}
 
 				if (accelerometer_value > threshold_begin) {
@@ -1082,10 +1107,10 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 					time_end = new Date().getTime();
 					if (((time_end - time_start) < time_diff_max) && ((time_end - time_start) > time_diff_min)) {
 						time_difference = time_end - time_start;
-						run_data.current_speed_m_s_v = (avg_distance / time_difference) * 1000;
-						run_data.current_speed_km_h_v = run_data.current_speed_m_s_v * run_data.conv_m_s_km_h;
-						run_data.distance_m_v = run_data.distance_m_v + avg_distance;
-						run_data.distance_km_v = run_data.distance_m_v / 1000;
+						run_data.setCurrent_speed_m_s_v((avg_distance / time_difference) * 1000);
+						run_data.setCurrent_speed_km_h_v(run_data.getCurrent_speed_m_s_v()* run_data.conv_m_s_km_h);
+						run_data.setDistance_m_v(run_data.getDistance_m_v()+ avg_distance);
+						run_data.setDistance_km_v(run_data.getDistance_m_v() / 1000);
 					}
 				}
 				break;
@@ -1104,74 +1129,74 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 			long delta_time = (time_calories_now - time_calories_last);
 			double delta_time_hours = ((double) delta_time) / 1000 / 60 / 60;
 
-			if (delta_time > run_data.granularity_time) {
-				if (run_data.current_heart_rate >= user_bio.resting_hr && user_bio.resting_hr > 20 && user_bio.resting_hr < 100) {
-					if (user_bio.gender_v) {
+			if (delta_time > run_data.getGranularity_time()) {
+				if (run_data.getCurrent_heart_rate()>= user_bio.getResting_hr()&& user_bio.getResting_hr()> 20 && user_bio.getResting_hr()< 100) {
+					if (user_bio.isGender_v()) {
 						//Male: ((-55.0969 + (0.6309 x HR) + (0.1988 x W) + (0.2017 x A))/4.184) x 60 x T */
-						run_data.calories_v_heart_beat += ((-55.0969 + (0.6309 * run_data.current_heart_rate) + (0.1988 * user_bio.current_weight_v) + (0.2017 * user_bio.age)) / 4.184) * 60 * delta_time_hours;
+						run_data.setCalories_v_heart_beat(run_data.getCalories_v_heart_beat()+((-55.0969 + (0.6309 * run_data.getCurrent_heart_rate()) + (0.1988 * user_bio.getCurrent_weight_v()) + (0.2017 * user_bio.getAge())) / 4.184) * 60 * delta_time_hours);
 					} else {
 						// Female: ((-20.4022 + (0.4472 x HR) - (0.1263 x W) + (0.074 x A))/4.184) x 60 x T */
-						run_data.calories_v_heart_beat += ((-20.4022 + (0.4472 * run_data.current_heart_rate) + (0.1263 * user_bio.current_weight_v) + (0.074 * user_bio.age)) / 4.184) * 60 * delta_time_hours;
+						run_data.setCalories_v_heart_beat(run_data.getCalories_v_heart_beat()+ ((-20.4022 + (0.4472 * run_data.getCurrent_heart_rate()) + (0.1263 * user_bio.getCurrent_weight_v()) + (0.074 * user_bio.getAge())) / 4.184) * 60 * delta_time_hours);
 					}
 				}
 				//-20% ≤ % Grade ≤ - 15%:
-				if (run_data.inclination >= -20 && run_data.inclination <= -15) {
-					run_data.calories_v_distance = (((-0.01 * run_data.inclination) + 0.50) * user_bio.current_weight_v + run_data.threadmill_factor) * run_data.distance_km_v * user_bio.cff;
+				if (run_data.getInclination()>= -20 && run_data.getInclination()<= -15) {
+					run_data.setCalories_v_distance(run_data.getCalories_v_distance()+(((-0.01 * run_data.getInclination()) + 0.50) * user_bio.getCurrent_weight_v()+ run_data.getThreadmill_factor()) * run_data.getDistance_km_v()* user_bio.getCff());
 				}
 				//-15% < % Grade ≤ - 10%:
-				if (run_data.inclination >= -15 && run_data.inclination <= -10) {
-					run_data.calories_v_distance = (((-0.02 * run_data.inclination) + 0.35) * user_bio.current_weight_v + run_data.threadmill_factor) * run_data.distance_km_v * user_bio.cff;
+				if (run_data.getInclination()>= -15 && run_data.getInclination()<= -10) {
+					run_data.setCalories_v_distance(run_data.getCalories_v_distance()+(((-0.02 * run_data.getInclination()+ 0.35) * user_bio.getCurrent_weight_v()+ run_data.getThreadmill_factor()) * run_data.getDistance_km_v()* user_bio.getCff()));
 				}
 				//10% < % Grade ≤ 0%:
-				if (run_data.inclination >= -10 && run_data.inclination <= 0) {
-					run_data.calories_v_distance = (((0.04 * run_data.inclination) + 0.95) * user_bio.current_weight_v + run_data.threadmill_factor) * run_data.distance_km_v * user_bio.cff;
+				if (run_data.getInclination()>= -10 && run_data.getInclination()<= 0) {
+					run_data.setCalories_v_distance(run_data.getCalories_v_distance()+(((0.04 * run_data.getInclination()) + 0.95) * user_bio.getCurrent_weight_v() + run_data.getThreadmill_factor()) * run_data.getDistance_km_v()* user_bio.getCff());
 				}
 				//0% < % Grade ≤ 10%:
-				if (run_data.inclination > 0 && run_data.inclination <= 10) {
-					run_data.calories_v_distance = (((0.05 * run_data.inclination) + 0.95) * user_bio.current_weight_v + run_data.threadmill_factor) * run_data.distance_km_v * user_bio.cff;
+				if (run_data.getInclination()> 0 && run_data.getInclination()<= 10) {
+					run_data.setCalories_v_distance(run_data.getCalories_v_distance()+(((0.05 * run_data.getInclination()) + 0.95) * user_bio.getCurrent_weight_v() + run_data.getThreadmill_factor()) * run_data.getDistance_km_v()* user_bio.getCff());
 				}
 				//10% < % Grade ≤ 15%:
-				if (run_data.inclination > 10 && run_data.inclination <= 15) {
-					run_data.calories_v_distance = (((0.07 * run_data.inclination) + 0.75) * user_bio.current_weight_v + run_data.threadmill_factor) * run_data.distance_km_v * user_bio.cff;
+				if (run_data.getInclination()> 10 && run_data.getInclination()<= 15) {
+					run_data.setCalories_v_distance(run_data.getCalories_v_distance()+(((0.07 * run_data.getInclination()) + 0.75) * user_bio.getCurrent_weight_v() + run_data.getThreadmill_factor()) * run_data.getDistance_km_v()* user_bio.getCff());
 				}
 				time_calories_last = new Date().getTime();
 
 				double usedMemoryPercentage = 100 * (double) availableMemory() / (double) totalMemory();
 				if (usedMemoryPercentage < 80) {
-					run_data.pushInstant(run_data.average_speed_km_h_v, this.avg_distance, this.gps_speed, run_data.gps_distance_km, run_data.calories_v_distance, run_data.calories_v_heart_beat, run_data.current_heart_rate, this.longitude, this.latitude, this.altitude);
+					run_data.pushInstant(run_data.getAverage_speed_km_h_v(), this.avg_distance, this.gps_speed, run_data.getGps_distance_km(), run_data.getCalories_v_distance(), run_data.getCalories_v_heart_beat(), run_data.getCurrent_heart_rate(), this.longitude, this.latitude, this.altitude);
 				} else {
 					writeLog("RunActivity: ERROR: MEMORY USE ABOVE 80%.");
 				}
 			}
 		}
 		run_data.getValues();
-		run_data.average_speed_km_h_v = getAvgSpeed(run_data.current_speed_km_h_v);
-		if (user_bio.bMetricSystem) {
-			mDistanceMotion.setText(String.format("%.2f", run_data.distance_km_v));
-			mDistanceGPS.setText(String.format("%.2f", run_data.gps_distance_km));
-			mSpeedMotion.setText(String.format("%.2f", run_data.average_speed_km_h_v));
-			mSpeedGPS.setText(String.format("%.2f", this.gps_speed));
+		run_data.setAverage_speed_km_h_v(getAvgSpeed(run_data.getCurrent_speed_km_h_v()));
+		if (user_bio.isBMetricSystem()) {
+			mDistanceMotion.setText(String.format(Locale.CANADA, "%.2f", run_data.getDistance_km_v()));
+			mDistanceGPS.setText(String.format(Locale.CANADA, "%.2f", run_data.getGps_distance_km()));
+			mSpeedMotion.setText(String.format(Locale.CANADA, "%.2f", run_data.getAverage_speed_km_h_v()));
+			mSpeedGPS.setText(String.format(Locale.CANADA, "%.2f", this.gps_speed));
 		} else {
-			mDistanceMotion.setText(String.format("%.2f", run_data.distance_miles_v));
-			mDistanceGPS.setText(String.format("%.2f", run_data.gps_distance_miles));
-			mSpeedMotion.setText(String.format("%.2f", run_data.average_speed_miles_h_v));
-			mSpeedGPS.setText(String.format("%.2f", this.gps_speed));
+			mDistanceMotion.setText(String.format(Locale.CANADA, "%.2f", run_data.getDistance_miles_v()));
+			mDistanceGPS.setText(String.format(Locale.CANADA, "%.2f", run_data.getGps_distance_miles()));
+			mSpeedMotion.setText(String.format(Locale.CANADA, "%.2f", run_data.getAverage_speed_miles_h_v()));
+			mSpeedGPS.setText(String.format(Locale.CANADA, "%.2f", this.gps_speed));
 		}
 		double idle_speed = 1;
 		double walking_speed = 2;
-		if (run_data.average_speed_km_h_v < idle_speed) {
+		if (run_data.getAverage_speed_km_h_v()< idle_speed) {
 			status = "Idle";
 		} else {
 			this_time = new Date().getTime();
 			last_time = new Date().getTime();
-			if (run_data.average_speed_km_h_v < walking_speed) {
+			if (run_data.getAverage_speed_km_h_v() < walking_speed) {
 				status = "Walking";
 			} else {
 				status = "Running";
 			}
 		}
-		if (run_data.current_speed_m_s_v > 0) {
-			last_curr_speed = run_data.current_speed_m_s_v;
+		if (run_data.getCurrent_speed_m_s_v()> 0) {
+			last_curr_speed = run_data.getCurrent_speed_m_s_v();
 		}
 	}
 
@@ -1185,15 +1210,12 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	 * <p/>
 	 * <p>See the SENSOR_STATUS_* constants in
 	 * {@link SensorManager SensorManager} for details.
-	 *
 	 * @param sensor
 	 * @param accuracy The new accuracy of this sensor, one of
 	 *                 {@code SensorManager.SENSOR_STATUS_*}
 	 */
-
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
 	}
 
 	public void startChronometer(View view) {
@@ -1206,7 +1228,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				user_status = RUNNING;
 				time_calories_last = new Date().getTime();
 				run_data.setStartTime();
-				btn_start.setText("STOP");
+				btn_start.setText(R.string.button_message_stop);
 				break;
 
 			case PAUSED:
@@ -1215,7 +1237,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				mChronometer.start();
 				user_status = RUNNING;
 				time_calories_last = new Date().getTime();
-				btn_start.setText("STOP");
+				btn_start.setText(R.string.button_message_stop);
 				break;
 
 			case RUNNING:
@@ -1223,7 +1245,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				showElapsedTime();
 				mChronometer.stop();
 				user_status = PAUSED;
-				btn_start.setText("RESUME");
+				btn_start.setText(R.string.button_message_resume);
 				break;
 		}
 	}

@@ -2,7 +2,6 @@ package com.runtracer;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -18,8 +17,6 @@ import android.widget.ExpandableListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.text.ParseException;
@@ -49,7 +46,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 	List<String> listDataHeader;
 	HashMap<String, List<String>> listDataChild;
-	HashMap<Integer, Integer> listDataChildToRunIdCorrelation;
+	HashMap<Long, Long> listDataChildToRunIdCorrelation;
 
 	private HashMap activityInfoMap;
 	private HashMap filteredActivityInfoMap;
@@ -58,7 +55,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	 * See https://g.co/AppIndexing/AndroidStudio for more information.
 	 */
 	private GoogleApiClient client;
-	private int selected_run_id;
+	private Long selected_run_id;
 	private UserData user_data;
 
 	@Override
@@ -126,7 +123,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		});
 		// ATTENTION: This was auto-generated to implement the App Indexing API.
 		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+		client = new GoogleApiClient.Builder(this).build();
 
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 	}
@@ -165,14 +162,14 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		return true;
 	}
 
-	public String getActivityInfo(Integer ckey) {
+	public String getActivityInfo(long ckey) {
 		String info = null;
 
 		if (filteredActivityInfoMap.containsKey(ckey)) {
 			RunData lrun;
 			lrun = (RunData) filteredActivityInfoMap.get(ckey);
 			lrun.getValues();
-			info = String.format(Locale.US, "%s\ndistance: %.2f \ncalories: %.2f", lrun.getStartTime(), lrun.distance_km_v, lrun.calories_v_distance);
+			info = String.format(Locale.US, "%s\ndistance: %.2f \ncalories: %.2f", lrun.getStartTime(), lrun.getDistance_km_v(), lrun.getCalories_v_distance());
 		}
 		writeLog(String.format("getActivityInfo: %s", info));
 		return info;
@@ -194,11 +191,11 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 			ckey = (Integer) itk.next();
 			writeLog(String.format(Locale.US, "activityInfoMap: ckey: %d", ckey));
 			lruninfo = (RunData) activityInfoMap.get(ckey);
-			writeLog(String.format("activityInfoMap: run_date_start: %s", lruninfo.run_date_start));
-			writeLog(String.format("activityInfoMap: run_id: %s", lruninfo.run_id_v));
-			writeLog(String.format("activityInfoMap: calories: %s", lruninfo.calories_v_distance));
+			writeLog(String.format("activityInfoMap: run_date_start: %s", lruninfo.getRun_date_start()));
+			writeLog(String.format("activityInfoMap: run_id: %s", lruninfo.getRun_id_v()));
+			writeLog(String.format("activityInfoMap: calories: %s", lruninfo.getCalories_v_distance()));
 
-			if ((lruninfo.run_id_v > 0)) {
+			if ((lruninfo.getRun_id_v()> 0)) {
 				/*
 				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 				lruninfo.run_date_start_v= new Date();
@@ -243,24 +240,24 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 			writeLog(String.format(Locale.US, "ckey: %d", ckey));
 			if (filteredActivityInfoMap.containsKey(ckey)) {
 				lruninfo = (RunData) filteredActivityInfoMap.get(ckey);
-				writeLog(String.format(Locale.US, "filteredActivityInfoMap.get(%d): run_date_start: %s", ckey, lruninfo.run_date_start));
-				if ((lruninfo.run_id_v > 0)) {
-					String data_info = getActivityInfo(lruninfo.run_id_v);
+				writeLog(String.format(Locale.US, "filteredActivityInfoMap.get(%d): run_date_start: %s", ckey, lruninfo.getRun_date_start()));
+				if ((lruninfo.getRun_id_v()> 0)) {
+					String data_info = getActivityInfo((int) lruninfo.getRun_id_v());
 					allActivity.add(data_info);
-					int pos = allActivity.indexOf(data_info);
-					listDataChildToRunIdCorrelation.put(pos, lruninfo.run_id_v);
+					long pos = allActivity.indexOf(data_info);
+					listDataChildToRunIdCorrelation.put(pos, lruninfo.getRun_id_v());
 					try {
 						Calendar cdate = Calendar.getInstance();
 						String thismonthcomparedate = String.format(Locale.US, "%04d-%02d-%02d %02d:%02d:%02d am", cdate.get(Calendar.YEAR), cdate.get(Calendar.MONTH) + 1, 1, 0, 0, 0);
 						String lastmonthcomparedate = String.format(Locale.US, "%04d-%02d-%02d %02d:%02d:%02d am", cdate.get(Calendar.YEAR), cdate.get(Calendar.MONTH), 1, 0, 0, 0);
 						//if(lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
-						if (lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
+						if (lruninfo.getRun_date_start_v().after(format.parse(thismonthcomparedate))) {
 							//thisMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
-							thisMonth.add(getActivityInfo(lruninfo.run_id_v));
+							thisMonth.add(getActivityInfo(lruninfo.getRun_id_v()));
 						}
-						if (lruninfo.run_date_start_v.after(format.parse(lastmonthcomparedate)) && lruninfo.run_date_start_v.before(format.parse(thismonthcomparedate))) {
+						if (lruninfo.getRun_date_start_v().after(format.parse(lastmonthcomparedate)) && lruninfo.getRun_date_start_v().before(format.parse(thismonthcomparedate))) {
 							//lastMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
-							lastMonth.add(getActivityInfo(lruninfo.run_id_v));
+							lastMonth.add(getActivityInfo(lruninfo.getRun_id_v()));
 						}
 					} catch (ParseException e) {
 						e.printStackTrace();
@@ -282,35 +279,11 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		// ATTENTION: This was auto-generated to implement the App Indexing API.
 		// See https://g.co/AppIndexing/AndroidStudio for more information.
 		client.connect();
-		Action viewAction = Action.newAction(
-			Action.TYPE_VIEW, // TODO: choose an action type.
-			"Activities Page", // TODO: Define a title for the content shown.
-			// TODO: If you have web page content that matches this app activity's content,
-			// make sure this auto-generated web page URL is correct.
-			// Otherwise, set the URL to null.
-			Uri.parse("http://host/path"),
-			// TODO: Make sure this auto-generated app deep link URI is correct.
-			Uri.parse("android-app://com.runtracer/http/host/path")
-		);
-		AppIndex.AppIndexApi.start(client, viewAction);
 	}
 
 	@Override
 	public void onStop() {
 		super.onStop();
-		// ATTENTION: This was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		Action viewAction = Action.newAction(
-			Action.TYPE_VIEW, // TODO: choose an action type.
-			"Activities Page", // TODO: Define a title for the content shown.
-			// TODO: If you have web page content that matches this app activity's content,
-			// make sure this auto-generated web page URL is correct.
-			// Otherwise, set the URL to null.
-			Uri.parse("http://host/path"),
-			// TODO: Make sure this auto-generated app deep link URI is correct.
-			Uri.parse("android-app://com.runtracer/http/host/path")
-		);
-		AppIndex.AppIndexApi.end(client, viewAction);
 		client.disconnect();
 	}
 

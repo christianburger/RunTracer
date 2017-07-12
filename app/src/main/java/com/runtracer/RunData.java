@@ -27,6 +27,10 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 /*
 describe run_summary;
 +---------------------+-------------+------+-----+---------+----------------+
@@ -47,43 +51,47 @@ describe run_summary;
 | date_end            | datetime    | YES  |     | NULL    |                |
 +---------------------+-------------+------+-----+---------+----------------+
  */
+
+@Data
+@Getter
+@Setter
 public class RunData implements Serializable {
 	private static final long serialVersionUID = 100L;
 	private static final String TAG = "rundata";
 	private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
-	String run_date_start;
+	private String run_date_start;
 	private String run_date_end;
-	int run_id_v;
+	private long run_id_v;
 	final double conv_m_s_km_h = 3.6;
 	final double conv_km_miles = 0.621371192237;
 	private static final int ERROR = -1001;
 	static final int colsz = 12;
-	Date run_date_start_v;
+	private Date run_date_start_v;
 	private Date run_date_end_v;
 
-	double average_speed_km_h_v;
-	double average_speed_miles_h_v;
-	double current_speed_m_s_v;
-	public double current_speed_km_h_v;
-	public double current_speed_miles_h_v;
-	public double calories_v_distance;
-	public double calories_v_heart_beat;
-	public double current_weight_v;
-	public double current_fat_v;
-	public int inclination;
-	public double threadmill_factor;
-	public int current_heart_rate;
-	public int recovery_hr;
-	public int resting_hr;
-	public long granularity_time = 2000;
-	public double distance_m_v = 0.0;
-	public double distance_km_v = 0.0;
-	public double distance_miles_v = 0.0;
-	public double gps_distance_km = 0.0;
-	public double gps_distance_miles = 0.0;
-	public long current_time = 0;
-	public HashMap<Long, RunInstant> runtrace;
-	public String runtrace_md5sum;
+	private double average_speed_km_h_v;
+	private double average_speed_miles_h_v;
+	private double current_speed_m_s_v;
+	private double current_speed_km_h_v;
+	private double current_speed_miles_h_v;
+	private double calories_v_distance;
+	private double calories_v_heart_beat;
+	private double current_weight_v;
+	private double current_fat_v;
+	private int inclination;
+	private double threadmill_factor;
+	private int current_heart_rate;
+	private int recovery_hr;
+	private int resting_hr;
+	private long granularity_time = 2000;
+	private double distance_m_v = 0.0;
+	private double distance_km_v = 0.0;
+	private double distance_miles_v = 0.0;
+	private double gps_distance_km = 0.0;
+	private double gps_distance_miles = 0.0;
+	private long ctime = 0;
+	private HashMap<Long, RunInstant> runtrace;
+	private String runtrace_md5sum;
 
 	public int getNoPoints() {
 		int nopoints = 0;
@@ -95,8 +103,8 @@ public class RunData implements Serializable {
 		return nopoints;
 	}
 
-	public boolean pushInstant(double mspeed, double mdistance, double gpsspeed, double gpsdistance, double caloriesdistance, double calorieshr, int heartrate, double longitude, double latitude, double altitude) {
-		this.current_time = new Date().getTime();
+	boolean pushInstant(double mspeed, double mdistance, double gpsspeed, double gpsdistance, double caloriesdistance, double calorieshr, int heartrate, double longitude, double latitude, double altitude) {
+		this.ctime = new Date().getTime();
 		RunInstant tmp = new RunInstant();
 		tmp.current_motion_speed_km_h_v = mspeed;
 		tmp.current_motion_distance_km_v = mdistance;
@@ -108,16 +116,16 @@ public class RunData implements Serializable {
 		tmp.longitude = longitude;
 		tmp.latitude = latitude;
 		tmp.altitude = altitude;
-		runtrace.put(this.current_time, tmp);
+		runtrace.put(this.ctime, tmp);
 		return true;
 	}
 
-	String md5sum(byte[] object_bytes) throws NoSuchAlgorithmException, IOException {
+	private String md5sum(byte[] object_bytes) throws NoSuchAlgorithmException, IOException {
 		MessageDigest messageDigest = MessageDigest.getInstance("MD5");
 		int byteCount;
 		byteCount = object_bytes.length;
 		messageDigest.update(object_bytes, 0, byteCount);
-		writeLog(String.format("md5sum byteCount: %d", byteCount));
+		writeLog(String.format(Locale.US, "md5sum byteCount: %d", byteCount));
 
 		byte[] digest = messageDigest.digest();
 		String digeststring = Arrays.toString(digest);
@@ -126,7 +134,7 @@ public class RunData implements Serializable {
 		return (digeststring);
 	}
 
-	byte[] writeObject(Object object) {
+	private byte[] writeObject(Object object) {
 		byte[] object_bytes = new byte[0];
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ObjectOutput out = null;
@@ -134,7 +142,7 @@ public class RunData implements Serializable {
 			out = new ObjectOutputStream(bos);
 			out.writeObject(object);
 			object_bytes = bos.toByteArray();
-			writeLog(String.format("writeObject: %d", bos.size()));
+			writeLog(String.format(Locale.US, "writeObject: %d", bos.size()));
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
@@ -154,7 +162,7 @@ public class RunData implements Serializable {
 		return object_bytes;
 	}
 
-	Object readObject(byte[] object_bytes) {
+	private Object readObject(byte[] object_bytes) {
 		Object object = null;
 		ByteArrayInputStream bis = new ByteArrayInputStream(object_bytes);
 		ObjectInput in = null;
@@ -211,7 +219,7 @@ public class RunData implements Serializable {
 		runtrace_md5sum = null;
 	}
 
-	public String getKeyName(int colidx) {
+	String getKeyName(int colidx) {
 		// this is the order in which data is received from the database.
 		String keyname = "";
 		if (colidx <= colsz || colidx > 0) {
@@ -297,9 +305,9 @@ public class RunData implements Serializable {
 		encoded_runtrace_string = Base64.encodeToString(objectstream_wr, Base64.DEFAULT);
 		jsonRunData.accumulate("runtrace", encoded_runtrace_string);
 		if (!jsonRunData.isNull("runtrace")) {
-			byte[] objectstream = new byte[0];
+			byte[] objectstream;
 			encoded_runtrace_string = (String) jsonRunData.get("runtrace");
-			String pattern = "(^([A-Za-z0-9+\\/\\\\]{4})*([A-Za-z0-9+\\/\\\\]{4}|[A-Za-z0-9+\\/\\\\]{3}=|[A-Za-z0-9+\\/\\\\]{2}==).*$)";
+			String pattern = "(^([A-Za-z0-9+/\\\\]{4})*([A-Za-z0-9+/\\\\]{4}|[A-Za-z0-9+/\\\\]{3}=|[A-Za-z0-9+/\\\\]{2}==).*$)";
 			Pattern p = Pattern.compile(pattern, Pattern.DOTALL);
 			Matcher m = p.matcher(encoded_runtrace_string);
 			if (m.matches()) {
@@ -364,13 +372,13 @@ public class RunData implements Serializable {
 			String encoded_runtrace = (String) json_run_data.get("runtrace");
 
 			//writeLog(String.format("writeJSON: received: encoded_runtrace: %s", encoded_runtrace));
-			String pattern = "(^([A-Za-z0-9+\\/\\\\]{4})*([A-Za-z0-9+\\/\\\\]{4}|[A-Za-z0-9+\\/\\\\]{3}=|[A-Za-z0-9+\\/\\\\]{2}==).*$)";
+			String pattern = "(^([A-Za-z0-9+/\\\\]{4})*([A-Za-z0-9+/\\\\]{4}|[A-Za-z0-9+/\\\\]{3}=|[A-Za-z0-9+/\\\\]{2}==).*$)";
 			Pattern p = Pattern.compile(pattern, Pattern.DOTALL);
 			Matcher m = p.matcher(encoded_runtrace);
 			if (m.matches()) {
 				String encoded_runtrace_cleaned = m.group(0);
 				//writeLog(String.format("writeJSON: received: encoded_runtrace_cleaned: %s and matched against the base64 pattern", encoded_runtrace_cleaned));
-				encoded_runtrace_cleaned.replace("\n", "").replace("\r", "");
+				encoded_runtrace_cleaned= encoded_runtrace_cleaned.replace("\n", "").replace("\r", "");
 				try {
 					objectstream = Base64.decode(encoded_runtrace_cleaned, Base64.DEFAULT);
 				} catch (Exception e) {
@@ -490,7 +498,7 @@ public class RunData implements Serializable {
 		out.writeObject(this.distance_miles_v);
 		out.writeObject(this.gps_distance_km);
 		out.writeObject(this.gps_distance_miles);
-		out.writeObject(this.current_time);
+		out.writeObject(this.ctime);
 		out.writeObject(this.runtrace);
 		out.writeObject(this.runtrace_md5sum);
 	}
@@ -521,7 +529,7 @@ public class RunData implements Serializable {
 		this.distance_miles_v = (double) in.readObject();
 		this.gps_distance_km = (double) in.readObject();
 		this.gps_distance_miles = (double) in.readObject();
-		this.current_time = (long) in.readObject();
+		this.ctime = (long) in.readObject();
 		this.runtrace = (HashMap<Long, RunInstant>) in.readObject();
 		this.runtrace_md5sum = (String) in.readObject();
 	}
