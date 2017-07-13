@@ -59,6 +59,7 @@ import com.google.firebase.auth.GoogleAuthProvider;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.services.DataBaseExchange;
 import com.runtracer.services.ServerDataService;
+import com.runtracer.services.SimpleOAuth2Token;
 import com.runtracer.sqlitedb.SqliteHandler;
 
 import org.json.JSONException;
@@ -98,6 +99,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public static DataBaseExchange dbExchange;
 	public static UserData user_bio;
 	public static String lastHash = null;
+	private static SimpleOAuth2Token simpleOAuth2Token;
 
 	File userdatafile;
 	File runmapfile;
@@ -1501,7 +1503,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				}, 20000);
 				Snackbar.make(findViewById(android.R.id.content), "Connectivity problem, could not update the server, retrying in 20 secs.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 			} else {
-				dbEx = DataBaseExchange.createDataBaseExchange();
+				if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() >= dbEx.getMaxAttempts()) {
+					dbEx = DataBaseExchange.createDataBaseExchange();
+				}
+			}
+
+			if (dbEx.getJson_data_out()!=null && !dbEx.getJson_data_out().isNull("access_token")) {
+				MainActivity.simpleOAuth2Token= new SimpleOAuth2Token(dbEx.getJson_data_out().getString("access_token"));
+				MainActivity.simpleOAuth2Token.setExpiry(1000L*dbEx.getJson_data_out().getInt("expires_in"));
+				writeLog("MainActivity: processResponse: processing token: " + simpleOAuth2Token.toString());
 			}
 
 			if (dbEx.getJson_data_out()==null || dbEx.getJson_data_out().isNull("status") || dbEx.getJson_data_out().isNull("created") || dbEx.getJson_data_out().isNull("sender")) {
