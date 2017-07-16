@@ -354,4 +354,5 @@ infringements of rights of publicity, privacy, trademark rights, business interr
 	<string name="auth_failed">Authentication Failed</string>
 	<string name="male">Male</string>
 	<string name="female">Female</string>
+	<string name="signed_in_message">signed_in:</string>
 </resources>

@@ -196,14 +196,20 @@ public class ServerDataService extends IntentService {
 			if (dbEx.getClient_id() != null && dbEx.getClient_secret() != null) {
 				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_id\", dbEx.getClient_id(): %s)", dbEx.getClient_id()));
 				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_secret\", dbEx.getClient_secret(): %s)", dbEx.getClient_secret()));
-				//httpConnection.addRequestProperty("client_id", dbEx.getClient_id());
-				//httpConnection.addRequestProperty("client_secret", dbEx.getClient_secret());
 				String userCredentials = dbEx.getClient_id() + ":" + dbEx.getClient_secret();
 				String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.DEFAULT);
 				httpConnection.setRequestProperty("Authorization", basicAuth);
 				httpConnection.setRequestMethod("POST");
 				httpConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 				//httpConnection.setRequestProperty("Content-Length", "14");
+				httpConnection.setRequestProperty("Content-Language", "en-US");
+				httpConnection.setUseCaches(false);
+				httpConnection.setDoInput(true);
+				httpConnection.setDoOutput(true);
+			} else {
+				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_id\", dbEx.getClient_id(): %s)", dbEx.getClient_id()));
+				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_secret\", dbEx.getClient_secret(): %s)", dbEx.getClient_secret()));
+				httpConnection.setRequestProperty("Content-Type", "application/json");
 				httpConnection.setRequestProperty("Content-Language", "en-US");
 				httpConnection.setUseCaches(false);
 				httpConnection.setDoInput(true);
@@ -236,10 +242,10 @@ public class ServerDataService extends IntentService {
 			if (dbEx.getGrant_type() != null) {
 				String postData = URLEncoder.encode("grant_type", "UTF-8") + '=' + URLEncoder.encode(dbEx.getGrant_type(), "UTF-8");
 				bufferedWriter.write(postData);
-				writeLog(String.format(Locale.US, "ServerDataService: BufferedWriter br.write(%s)", postData));
+				writeLog(String.format(Locale.US, "ServerDataService: BufferedWriter br.write(ENCODED: %s) : ", postData));
 			} else {
 				bufferedWriter.write(dbEx.getJson_data_in().toString());
-				writeLog(String.format(Locale.US, "ServerDataService: BufferedWriter br.write(%s)", dbEx.getJson_data_in().toString()));
+				writeLog(String.format(Locale.US, "ServerDataService: BufferedWriter br.write(JSON: %s) : ", dbEx.getJson_data_in().toString()));
 			}
 			bufferedWriter.flush();
 			bufferedWriter.close();

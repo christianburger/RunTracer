@@ -70,8 +70,8 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 			try {
 				userData = new JSONObject(value);
 				writeLog("LoginActivity: processed JSONObjectvalue: " +userData.toString());
-				retrievedFullName=userData.getString("full_name");
-				retrievedEmail=userData.getString("email");
+				retrievedFullName=userData.isNull("full_name")?null:userData.getString("full_name");
+				retrievedEmail=userData.isNull("email")?null:userData.getString("email");
 				writeLog("LoginActivity: found user full name: " + retrievedFullName );
 				writeLog("LoginActivity: found user email: " + retrievedEmail);
 			} catch (JSONException e) {

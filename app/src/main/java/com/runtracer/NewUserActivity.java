@@ -498,7 +498,9 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		retrievedEmail = String.valueOf(mUserEmail.getText());
 		retrievedPassword= String.valueOf(mUserPassword.getText());
 		retrievedGender = String.valueOf(mUserGender.getText());
-		retrievedDOB = datePicked;
+		if (retrievedDateOfBirth!=null) {
+			retrievedDOB = (date_format.format(retrievedDateOfBirth));
+		}
 		retrievedHeight = String.valueOf(mUserHeight.getText());
 		retrievedHipCircumference = String.valueOf(mUserHipCircumference.getText());
 		retrievedWeight = String.valueOf(mUserWeight.getText());

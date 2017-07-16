@@ -84,22 +84,17 @@ public class UserData implements Serializable {
 	private double hr_reserve = 0;        // heart rate reserve
 	private double maximum_hr = 0;        // maximum heart rate.
 	private double recovery_hr = 0;       // recovery heart rate.
-
 	private double target_hr_light = 0;
 	private double target_hr_moderate = 0;
 	private double target_hr_heavy = 0;
 	private double target_hr_very_heavy = 0;
-
 	private double total_distance_km = 0;
 	private double total_distance_miles = 0;
 	private double total_calories = 0;
 	private int no_runs = 0;
-
 	private boolean bMetricSystem = false;
-
 	private String uid;
 	private int uid_v = 0;
-
 	private String session_id;
 	private int total_runs = 0;
 	private final int minimum_age = 18;
@@ -107,76 +102,14 @@ public class UserData implements Serializable {
 	private Date created_v;
 
 	public UserData() {
-		full_name = "";
-		birthday = "";
-		gender = "";
-		height = "";
-		hip_circumference = "";
-		current_weight = "";
-		current_fat = "";
-		target_weight = "";
-		target_fat = "";
-		email = "";
-		status = "";
-		created = "";
-		created_at = "";
-
-		gender_v = false;
-
-		height_v = -1;
-		hip_circumference_v = -1;
-		current_weight_v = -1;
-		current_fat_v = -1;
-		target_weight_v = -1;
-		target_fat_v = -1;
-
-		height_v_imperial = -1;
-		hip_circumference_v_imperial = -1;
-		current_weight_v_imperial = -1;
-		target_weight_v_imperial = -1;
-
-		birthday_date = new Date();
-		age = -1;
-
-		vo2max = -1;
-		cff = -1;
-		bmr = -1;
-		rmr = -1;
-		bmi = -1;
-		bai = -1;
-
-		rhr_state = -1;
-		hr_reading = -1;
-		current_hr = -1;        // current reading of heart rate
-		last_hr = -1;           // last reading of heart rate
-		resting_hr = -1;        // resting heart rate
-		hr_reserve = -1;        // heart rate reserve
-		maximum_hr = -1;        // maximum heart rate.
-		recovery_hr = -1;       // recovery heart rate.
-
-		total_distance_km = 0;
-		total_distance_miles = 0;
-		total_calories = 0;
-		no_runs = 0;
-
-		target_hr_light = -1;
-		target_hr_moderate = -1;
-		target_hr_heavy = -1;
-		target_hr_very_heavy = -1;
-		bMetricSystem = false;
-		uid = "";
-		uid_v = -1;
-
-		session_id = "";
-		total_runs = 0;
-		created_v = new Date(0);
 	}
 
 	int getValues() {
-		int result = 0;
+		if(this.uid_v <= 0 ) {
+			return -1;
+		}
 		this.total_distance_miles = this.total_distance_km * this.conv_km_miles;
-		if (
-			this.current_weight == null || this.current_weight.compareTo("") == 0 ||
+		if ( this.current_weight == null || this.current_weight.compareTo("") == 0 ||
 				this.height == null || this.height.compareTo("") == 0 ||
 				this.hip_circumference == null || this.hip_circumference.compareTo("") == 0 ||
 				this.current_fat == null || this.current_fat.compareTo("") == 0 ||
@@ -307,7 +240,7 @@ public class UserData implements Serializable {
 			this.target_hr_heavy = 0.7 * this.maximum_hr;
 			this.target_hr_very_heavy = 0.9 * this.maximum_hr;
 		}
-		return (result);
+		return 0;
 	}
 
 	JSONObject createJSON() {
@@ -316,22 +249,22 @@ public class UserData implements Serializable {
 			NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
 			DecimalFormat df = (DecimalFormat) nf;
 			jsonuserdata = new JSONObject("{\"key\":\"data\"}");
-			jsonuserdata.accumulate("uid_v", this.uid_v);
-			jsonuserdata.accumulate("uid", this.uid);
-			jsonuserdata.accumulate("full_name", this.full_name);
-			jsonuserdata.accumulate("email", this.email);
-			jsonuserdata.accumulate("gender", this.gender);
-			jsonuserdata.accumulate("birthday", this.birthday);
-			jsonuserdata.accumulate("dob", this.birthday);
-			jsonuserdata.accumulate("height", this.height);
-			jsonuserdata.accumulate("hip_circumference", this.hip_circumference);
-			jsonuserdata.accumulate("weight", this.current_weight);
-			jsonuserdata.accumulate("fat", this.current_fat);
-			jsonuserdata.accumulate("target_weight", this.target_weight);
-			jsonuserdata.accumulate("target_fat", this.target_fat);
-			jsonuserdata.accumulate("resting_heart_rate", this.resting_hr);
-			jsonuserdata.accumulate("recovery_heart_rate", this.recovery_hr);
-			jsonuserdata.accumulate("metric", this.bMetricSystem ? 1 : 0);
+			jsonuserdata.put("uid_v", this.uid_v);
+			jsonuserdata.put("uid", this.uid);
+			jsonuserdata.put("full_name", this.full_name);
+			jsonuserdata.put("email", this.email);
+			jsonuserdata.put("gender", this.gender);
+			jsonuserdata.put("birthday", this.birthday);
+			jsonuserdata.put("dob", this.birthday);
+			jsonuserdata.put("height", this.height);
+			jsonuserdata.put("hip_circumference", this.hip_circumference);
+			jsonuserdata.put("weight", this.current_weight);
+			jsonuserdata.put("fat", this.current_fat);
+			jsonuserdata.put("target_weight", this.target_weight);
+			jsonuserdata.put("target_fat", this.target_fat);
+			jsonuserdata.put("resting_heart_rate", this.resting_hr);
+			jsonuserdata.put("recovery_heart_rate", this.recovery_hr);
+			jsonuserdata.put("metric", this.bMetricSystem ? 1 : 0);
 			writeLog(String.format("UserData: createJSON last line returning: %s", jsonuserdata.toString()));
 		} catch (JSONException e) {
 			e.printStackTrace();
@@ -667,44 +600,40 @@ public class UserData implements Serializable {
 	}
 
 	public boolean clean() {
-		full_name = "empty";
-		birthday = "empty";
-		gender = "empty";
-		height = "empty";
-		hip_circumference = "empty";
-		current_weight = "empty";
-		current_fat = "empty";
-		target_weight = "empty";
-		target_fat = "empty";
-		email = "empty";
-		status = "empty";
-		created = "empty";
-		created_at = "empty";
-
+		uid= null;
+		full_name= null;
+		birthday= null;
+		gender= null;
+		height= null;
+		hip_circumference= null;
+		current_weight= null;
+		current_fat= null;
+		target_weight= null;
+		target_fat= null;
+		email= null;
+		session_id= null;
+		status= null;
+		created= null;
+		created= null;
 		gender_v = false;
-
 		height_v = -1;
 		hip_circumference_v = -1;
 		current_weight_v = -1;
 		current_fat_v = -1;
 		target_weight_v = -1;
 		target_fat_v = -1;
-
 		height_v_imperial = -1;
 		hip_circumference_v_imperial = -1;
 		current_weight_v_imperial = -1;
 		target_weight_v_imperial = -1;
-
 		birthday_date = new Date();
 		age = -1;
-
 		vo2max = -1;
 		cff = -1;
 		bmr = -1;
 		rmr = -1;
 		bmi = -1;
 		bai = -1;
-
 		rhr_state = -1;
 		hr_reading = -1;
 		current_hr = -1;        // current reading of heart rate
@@ -713,21 +642,16 @@ public class UserData implements Serializable {
 		hr_reserve = -1;        // heart rate reserve
 		maximum_hr = -1;        // maximum heart rate.
 		recovery_hr = -1;       // recovery heart rate.
-
 		total_distance_km = 0;
 		total_distance_miles = 0;
 		total_calories = 0;
 		no_runs = 0;
-
 		target_hr_light = -1;
 		target_hr_moderate = -1;
 		target_hr_heavy = -1;
 		target_hr_very_heavy = -1;
 		bMetricSystem = false;
-		uid = "empty";
 		uid_v = -1;
-
-		session_id = "empty";
 		total_runs = 0;
 		created_v = new Date(0);
 		return true;

@@ -1,22 +1,28 @@
 <component name="ProjectDictionaryState">
   <dictionary name="root">
     <words>
+      <w>authok</w>
       <w>authtokenok</w>
       <w>cdate</w>
       <w>circunference</w>
       <w>ckey</w>
+      <w>colidx</w>
       <w>dataok</w>
       <w>firebase</w>
       <w>healthcare</w>
       <w>jsonuserdata</w>
       <w>objectstream</w>
       <w>passwd</w>
+      <w>returnval</w>
+      <w>rowidx</w>
       <w>rundata</w>
+      <w>runid</w>
       <w>runinfofile</w>
       <w>runmapfile</w>
       <w>runtrace</w>
       <w>runtracer</w>
       <w>sqlite</w>
+      <w>stringtoprint</w>
       <w>userdatafile</w>
     </words>
   </dictionary>
