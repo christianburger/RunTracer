@@ -18,7 +18,6 @@ import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -55,6 +54,7 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.services.DataBaseExchange;
@@ -88,7 +88,7 @@ import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener {
+public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener, OnCompleteListener<GetTokenResult> {
 
 	private static final boolean DEVELOPER_MODE = false;
 	public static final int minimum_age = 12;
@@ -192,6 +192,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private GoogleApiClient mGoogleApiClient;
 	private Button mNewUserButton;
 	private Button mEmailSignInButton;
+	private UserData newUser;
 
 	public MainActivity() {
 	}
@@ -772,64 +773,34 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					}
 				}
 			});
-
 	}
 
-	private int sendUserData(JSONObject jsonUserData) throws MalformedURLException, InterruptedException, JSONException {
-		UserData userData = new UserData();
+	private int sendUserData() throws MalformedURLException, InterruptedException, JSONException {
 		String email, password;
-		email = jsonUserData.getString("email");
-		password = jsonUserData.getString("passwd");
-		boolean dataok = false;
-		if (isServerReady()) {
-			available.acquire();
+		if (newUser != null) {
+			email = newUser.getEmail();
+			password = newUser.getPassword();
+			writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: email: %s", email));
+			writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: password: %s", password));
+			boolean dataok = false;
+			if (isServerReady()) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.100/user/create"));
+				dbExchange.setCommand("send_user_data");
+				dbExchange.setMethod("POST");
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				dbExchange.setJson_data_in(newUser.toJSON());
 
-			userData.setFull_name(jsonUserData.getString("full_name"));
-			userData.setEmail(jsonUserData.getString("email"));
-			userData.setBirthday(jsonUserData.getString("dob"));
-			userData.setGender(jsonUserData.getString("gender"));
-			userData.setHeight(jsonUserData.getString("height"));
-			userData.setHip_circumference(jsonUserData.getString("hip_circumference"));
-			userData.setCurrent_weight(jsonUserData.getString("weight"));
-			userData.setTarget_weight(jsonUserData.getString("target_weight"));
-			userData.setCurrent_fat(jsonUserData.getString("fat"));
-			userData.setTarget_fat(jsonUserData.getString("target_fat"));
-			userData.setBMetricSystem(user_bio.isBMetricSystem());
-
-			dbExchange.clear();
-			dbExchange.setUrl(new URL("http://192.168.1.100/user/create"));
-			dbExchange.setCommand("send_user_data");
-			dbExchange.setMethod("POST");
-			dbExchange.setGrant_type(null);
-			dbExchange.setClient_id(null);
-			dbExchange.setClient_secret(null);
-			dbExchange.setJson_data_in(userData.toJSON());
-
-			String hash = dbExchange.getHash();
-			available.release();
-			for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-				dataok = sendServerDataServiceRequest(hash);
+				String hash = dbExchange.getHash();
+				available.release();
+				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
+					dataok = sendServerDataServiceRequest(hash);
+				}
 			}
 		}
-
-		writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: email: %s", email));
-		writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: password: %s", password));
-
-		mAuth.createUserWithEmailAndPassword(email, password)
-			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-				@Override
-				public void onComplete(@NonNull Task<AuthResult> task) {
-					writeLog("createUserWithEmail:onComplete:" + task.isSuccessful());
-
-					// If sign in fails, display a message to the user. If sign in succeeds
-					// the auth state listener will be notified and logic to handle the
-					// signed in user can be handled in the listener.
-					if (!task.isSuccessful()) {
-						writeLog("createUserWithEmail:onComplete: FAILED: task.isSuccessful(): " + task.isSuccessful());
-						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_SHORT).show();
-					}
-				}
-			});
 		return 0;
 	}
 
@@ -967,33 +938,31 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 	// [END on_save_instance_state]
 
-
 	private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
 		writeLog("firebaseAuthWithGoogle:" + acct.getId());
 		AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-		mAuth.signInWithCredential(credential)
-			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-				@Override
-				public void onComplete(@NonNull Task<AuthResult> task) {
-					if (task.isSuccessful()) {
-						// Sign in success, update UI with the signed-in user's information
-						Log.d(TAG, "signInWithCredential:success");
-						FirebaseUser user = mAuth.getCurrentUser();
-						if (user != null) {
-							user_bio.setFull_name(user.getDisplayName());
-							user_bio.setEmail(user.getEmail());
-							user_bio.setFull_name(user.getDisplayName());
-						}
-						getOauth2Token(user_bio.toJSON());
-						updateUI();
-					} else {
-						// If sign in fails, display a message to the user.
-						Log.w(TAG, "signInWithCredential:failure", task.getException());
-						Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
-						updateUI();
+		mAuth.signInWithCredential(credential).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+			@Override
+			public void onComplete(@NonNull Task<AuthResult> task) {
+				if (task.isSuccessful()) {
+					// Sign in success, update UI with the signed-in user's information
+					Log.d(TAG, "signInWithCredential:success");
+					FirebaseUser user = mAuth.getCurrentUser();
+					if (user != null) {
+						user_bio.setFull_name(user.getDisplayName());
+						user_bio.setEmail(user.getEmail());
+						user_bio.setFull_name(user.getDisplayName());
 					}
+					getOauth2Token(user_bio.toJSON());
+					updateUI();
+				} else {
+					// If sign in fails, display a message to the user.
+					Log.w(TAG, "signInWithCredential:failure", task.getException());
+					Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
+					updateUI();
 				}
-			});
+			}
+		});
 
 	}
 
@@ -1030,7 +999,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					assert userData != null;
 					if (userData.getString("user_data") != null) {
 						jsonUserData = new JSONObject(userData.getString("user_data"));
-						sendUserData(jsonUserData);
+						UserData newUser = new UserData().fromJSON(jsonUserData);
+						if (!jsonUserData.isNull("passwd")) {
+							newUser.setPassword(jsonUserData.getString("passwd"));
+							createFirebaseUser(newUser);
+						}
 					}
 				}
 			} catch (Exception e) {
@@ -1109,6 +1082,29 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				e.printStackTrace();
 			}
 		}
+	}
+
+	private void createFirebaseUser(final UserData newUser) {
+		mAuth.createUserWithEmailAndPassword(newUser.getEmail(), newUser.getPassword());
+		this.newUser = newUser;
+		/*
+		.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+				@Override
+				public void onComplete(@NonNull Task<AuthResult> task) {
+					writeLog("createUserWithEmail:onComplete:" + task.isSuccessful());
+					if (task.isSuccessful()) {
+						try {
+							sendUserData(newUser.toJSON());
+						} catch (MalformedURLException | JSONException | InterruptedException e) {
+							e.printStackTrace();
+						}
+					} else {
+						writeLog("createUserWithEmail:onComplete: FAILED: task.isSuccessful(): " + task.isSuccessful());
+						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_LONG).show();
+					}
+				}
+			});
+			*/
 	}
 
 	private int getRunData(boolean bNeedsUpdate) throws MalformedURLException, JSONException, InterruptedException {
@@ -1322,7 +1318,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	@Override
 	public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
 	}
 
 	@Override
@@ -1331,21 +1326,48 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		if (user != null) {
 			String name = user.getDisplayName();
 			String email = user.getEmail();
-			Uri photoUrl = user.getPhotoUrl();
 			String uid = user.getUid();
+			Task<GetTokenResult> promise = user.getIdToken(true);
+			promise.addOnCompleteListener(this);
 			writeLog("onAuthStateChanged:signed_in:" + user.getUid());
-			writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: name: %s", name));
-			writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: email: %s", email));
-			writeLog(String.format(Locale.US, "MainActivity: authUser: FirebaseUser: uid: %s", uid));
+			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: name: %s", name));
+			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: email: %s", email));
+			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: uid: %s", uid));
 			user_bio.setFull_name(name);
 			user_bio.setEmail(email);
-			JSONObject jsonUserData = user_bio.toJSON();
-			getOauth2Token(jsonUserData);
 			mIsFirebaseSignedIn = true;
 			mStatus.setText(String.format("%s%s", getString(R.string.signed_in_message), user.getEmail()));
 		} else {
 			mIsFirebaseSignedIn = false;
 			writeLog("onAuthStateChanged:signed_out");
+		}
+	}
+
+	@Override
+	public void onComplete(@NonNull Task<GetTokenResult> task) {
+		writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onCompleteListener: FirebaseUser: task.isComplete: %s", task.isComplete()));
+		if (task.isSuccessful()) {
+			String idToken = task.getResult().getToken();
+			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: idToken: %s", idToken));
+			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: this.newUser!=null: %b", this.newUser != null));
+			if (this.newUser != null) {
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: newUser.setIdToken(token: %s)", idToken));
+				newUser.setIdToken(idToken);
+				try {
+					sendUserData();
+				} catch (MalformedURLException | JSONException | InterruptedException e) {
+					e.printStackTrace();
+				}
+			} else {
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: user_bio.setIdToken: %s", idToken));
+				user_bio.setIdToken(idToken);
+				JSONObject jsonUserData = user_bio.toJSON();
+				getOauth2Token(jsonUserData);
+			}
+		} else {
+			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: idToken: %s", "FAILED"));
+			user_bio.clean();
+			updateUI();
 		}
 	}
 

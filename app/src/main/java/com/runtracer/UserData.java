@@ -43,6 +43,8 @@ public class UserData implements Serializable {
 	private String target_weight;
 	private String target_fat;
 	private String email;
+	private String password;
+	private String idToken;
 	private String status;
 	private String created;
 	private String created_at;
@@ -105,20 +107,20 @@ public class UserData implements Serializable {
 	}
 
 	int getValues() {
-		if(this.uid_v <= 0 ) {
+		if (this.uid_v <= 0) {
 			return -1;
 		}
 		this.total_distance_miles = this.total_distance_km * this.conv_km_miles;
-		if ( this.current_weight == null || this.current_weight.compareTo("") == 0 ||
-				this.height == null || this.height.compareTo("") == 0 ||
-				this.hip_circumference == null || this.hip_circumference.compareTo("") == 0 ||
-				this.current_fat == null || this.current_fat.compareTo("") == 0 ||
-				this.target_weight == null || this.target_weight.compareTo("") == 0 ||
-				this.target_fat == null || this.target_fat.compareTo("") == 0 ||
-				this.gender == null || this.gender.compareTo("") == 0 ||
-				this.full_name == null || this.full_name.compareTo("") == 0 ||
-				this.email == null || this.email.compareTo("") == 0) {
-			return(-1);
+		if (this.current_weight == null || this.current_weight.compareTo("") == 0 ||
+			this.height == null || this.height.compareTo("") == 0 ||
+			this.hip_circumference == null || this.hip_circumference.compareTo("") == 0 ||
+			this.current_fat == null || this.current_fat.compareTo("") == 0 ||
+			this.target_weight == null || this.target_weight.compareTo("") == 0 ||
+			this.target_fat == null || this.target_fat.compareTo("") == 0 ||
+			this.gender == null || this.gender.compareTo("") == 0 ||
+			this.full_name == null || this.full_name.compareTo("") == 0 ||
+			this.email == null || this.email.compareTo("") == 0) {
+			return (-1);
 		}
 		writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
 		if ((this.created != null) && !(this.created.compareTo("0") == 0) && !(this.created.compareTo("1") == 0)) {
@@ -253,6 +255,7 @@ public class UserData implements Serializable {
 			jsonuserdata.put("uid", this.uid);
 			jsonuserdata.put("full_name", this.full_name);
 			jsonuserdata.put("email", this.email);
+			jsonuserdata.put("id_token", this.idToken);
 			jsonuserdata.put("gender", this.gender);
 			jsonuserdata.put("birthday", this.birthday);
 			jsonuserdata.put("dob", this.birthday);
@@ -300,24 +303,32 @@ public class UserData implements Serializable {
 			} else {
 				returnval = -4;
 			}
+
+			if (!jsonuserdata.isNull("id_token")) {
+				this.idToken= jsonuserdata.getString("id_token");
+				writeLog(String.format("UserData: writeJSON: received: this.idToken: %s", this.idToken));
+			} else {
+				returnval = -5;
+			}
+
 			if (!jsonuserdata.isNull("session_id")) {
 				this.session_id = jsonuserdata.get("session_id").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.session_id));
 			} else {
-				returnval = -5;
+				returnval = -6;
 			}
 			if (!jsonuserdata.isNull("birthday")) {
 				this.birthday = jsonuserdata.get("birthday").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.birthday));
 				this.birthday_date = local_format.parse(this.birthday);
 			} else {
-				returnval = -8;
+				returnval = -7;
 			}
 			if (!jsonuserdata.isNull("gender")) {
 				this.gender = jsonuserdata.get("gender").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.gender));
 			} else {
-				returnval = -9;
+				returnval = -8;
 			}
 			if (!jsonuserdata.isNull("height")) {
 				if (jsonuserdata.get("height") instanceof String) {
@@ -462,7 +473,7 @@ public class UserData implements Serializable {
 	}
 
 	public JSONObject toJSON() {
-			return (this.createJSON());
+		return (this.createJSON());
 	}
 
 
@@ -600,21 +611,21 @@ public class UserData implements Serializable {
 	}
 
 	public boolean clean() {
-		uid= null;
-		full_name= null;
-		birthday= null;
-		gender= null;
-		height= null;
-		hip_circumference= null;
-		current_weight= null;
-		current_fat= null;
-		target_weight= null;
-		target_fat= null;
-		email= null;
-		session_id= null;
-		status= null;
-		created= null;
-		created= null;
+		uid = null;
+		full_name = null;
+		birthday = null;
+		gender = null;
+		height = null;
+		hip_circumference = null;
+		current_weight = null;
+		current_fat = null;
+		target_weight = null;
+		target_fat = null;
+		email = null;
+		session_id = null;
+		status = null;
+		created = null;
+		created = null;
 		gender_v = false;
 		height_v = -1;
 		hip_circumference_v = -1;
