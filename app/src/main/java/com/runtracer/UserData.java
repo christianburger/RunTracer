@@ -1,12 +1,12 @@
 package com.runtracer;
 
+import android.util.Log;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -44,12 +44,11 @@ public class UserData implements Serializable {
 	private String target_fat;
 	private String email;
 	private String password;
+	private String metric;
 	private String idToken;
 	private String status;
 	private String created;
 	private String created_at;
-
-	private boolean gender_v;
 
 	private double height_v = 0;
 	private double hip_circumference_v = 0;
@@ -94,7 +93,6 @@ public class UserData implements Serializable {
 	private double total_distance_miles = 0;
 	private double total_calories = 0;
 	private int no_runs = 0;
-	private boolean bMetricSystem = false;
 	private String uid;
 	private int uid_v = 0;
 	private String session_id;
@@ -162,9 +160,7 @@ public class UserData implements Serializable {
 		} catch (NumberFormatException nfe) {
 			writeLog("YES, GOT AN EXCEPTION: " + nfe.getMessage());
 		}
-		if (!(this.gender.compareTo("empty") == 0)) {
-			this.gender_v = (gender.compareTo("Male") == 0);
-		}
+
 		this.current_weight_v_imperial = current_weight_v * conv_kg_lbs;
 		this.height_v_imperial = this.height_v * conv_cm_inches;
 		this.hip_circumference_v_imperial = this.hip_circumference_v * conv_cm_inches;
@@ -172,7 +168,7 @@ public class UserData implements Serializable {
 
 		/*For males: BMR = (13.75 x WKG) + (5 x HC) - (6.76 x age) + 66
 			For females: BMR = (9.56 x WKG) + (1.85 x HC) - (4.68 x age) + 655 */
-		if (this.gender_v) {
+		if (this.gender.compareToIgnoreCase("male") == 0) {
 			this.bmr = 13.75 * this.current_weight_v + 5 * this.height_v - (6.76 * this.age) + 66;
 		} else {
 			this.bmr = 9.56 * this.current_weight_v + 1.85 * this.height_v - (4.68 * this.age) + 655;
@@ -248,26 +244,25 @@ public class UserData implements Serializable {
 	JSONObject createJSON() {
 		JSONObject jsonuserdata = null;
 		try {
-			NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
-			DecimalFormat df = (DecimalFormat) nf;
 			jsonuserdata = new JSONObject("{\"key\":\"data\"}");
-			jsonuserdata.put("uid_v", this.uid_v);
-			jsonuserdata.put("uid", this.uid);
-			jsonuserdata.put("full_name", this.full_name);
-			jsonuserdata.put("email", this.email);
-			jsonuserdata.put("id_token", this.idToken);
-			jsonuserdata.put("gender", this.gender);
-			jsonuserdata.put("birthday", this.birthday);
-			jsonuserdata.put("dob", this.birthday);
-			jsonuserdata.put("height", this.height);
-			jsonuserdata.put("hip_circumference", this.hip_circumference);
-			jsonuserdata.put("weight", this.current_weight);
-			jsonuserdata.put("fat", this.current_fat);
-			jsonuserdata.put("target_weight", this.target_weight);
-			jsonuserdata.put("target_fat", this.target_fat);
-			jsonuserdata.put("resting_heart_rate", this.resting_hr);
-			jsonuserdata.put("recovery_heart_rate", this.recovery_hr);
-			jsonuserdata.put("metric", this.bMetricSystem ? 1 : 0);
+			jsonuserdata.put("uid_v", this.getUid_v());
+			jsonuserdata.put("full_name", this.getFull_name());
+			jsonuserdata.put("email", this.getEmail());
+			jsonuserdata.put("password", this.getPassword());
+			jsonuserdata.put("id_token", this.getIdToken());
+			jsonuserdata.put("gender", this.getGender());
+			jsonuserdata.put("metric", this.getMetric());
+			if (this.birthday_date != null) {
+				jsonuserdata.put("birthday", date_format.format(this.getBirthday_date()));
+			}
+			jsonuserdata.put("height_v", this.getHeight_v());
+			jsonuserdata.put("hip_circumference_v", this.getHip_circumference_v());
+			jsonuserdata.put("current_weight_v", this.getCurrent_weight_v());
+			jsonuserdata.put("current_fat_v", this.getCurrent_fat_v());
+			jsonuserdata.put("target_weight_v", this.getTarget_weight_v());
+			jsonuserdata.put("target_fat_v", this.getTarget_fat_v());
+			jsonuserdata.put("resting_heart_rate", this.getResting_hr());
+			jsonuserdata.put("recovery_heart_rate", this.getRecovery_hr());
 			writeLog(String.format("UserData: createJSON last line returning: %s", jsonuserdata.toString()));
 		} catch (JSONException e) {
 			e.printStackTrace();
@@ -275,7 +270,7 @@ public class UserData implements Serializable {
 		return (jsonuserdata);
 	}
 
-	int writeJSON(JSONObject jsonuserdata) {
+	private int writeJSON(JSONObject jsonuserdata) {
 		int returnval = 0;
 		try {
 			returnval = 0;
@@ -285,145 +280,155 @@ public class UserData implements Serializable {
 			} else {
 				returnval = -1;
 			}
-			if (!jsonuserdata.isNull("uid")) {
-				this.uid = jsonuserdata.get("uid").toString();
-				writeLog(String.format("UserData: writeJSON: %s", this.uid));
-			} else {
-				returnval = -2;
-			}
-			if (!jsonuserdata.isNull("full_name")) {
+			if (!jsonuserdata.isNull("full_name") && jsonuserdata.get("full_name") instanceof String) {
 				this.full_name = jsonuserdata.getString("full_name");
 				writeLog(String.format("UserData: writeJSON: received: this.full_name: %s", this.full_name));
 			} else {
-				returnval = -3;
+				returnval = -2;
 			}
-			if (!jsonuserdata.isNull("email")) {
+			if (!jsonuserdata.isNull("email") && jsonuserdata.get("email") instanceof String) {
 				this.email = jsonuserdata.getString("email");
 				writeLog(String.format("UserData: writeJSON: received: this.email: %s", this.email));
 			} else {
+				returnval = -3;
+			}
+			if (!jsonuserdata.isNull("password") && jsonuserdata.get("password") instanceof String) {
+				this.password = jsonuserdata.getString("password");
+				writeLog(String.format("UserData: writeJSON: received: this.password: %s", this.password));
+			} else {
 				returnval = -4;
 			}
-
-			if (!jsonuserdata.isNull("id_token")) {
-				this.idToken= jsonuserdata.getString("id_token");
+			if (!jsonuserdata.isNull("id_token") && jsonuserdata.get("id_token") instanceof String) {
+				this.idToken = jsonuserdata.getString("id_token");
 				writeLog(String.format("UserData: writeJSON: received: this.idToken: %s", this.idToken));
 			} else {
 				returnval = -5;
 			}
-
-			if (!jsonuserdata.isNull("session_id")) {
-				this.session_id = jsonuserdata.get("session_id").toString();
-				writeLog(String.format("UserData: writeJSON: %s", this.session_id));
+			if (!jsonuserdata.isNull("birthday") && jsonuserdata.get("birthday") instanceof String) {
+				this.birthday = jsonuserdata.getString("birthday");
+				this.birthday_date = date_format.parse(this.birthday);
 			} else {
 				returnval = -6;
-			}
-			if (!jsonuserdata.isNull("birthday")) {
-				this.birthday = jsonuserdata.get("birthday").toString();
-				writeLog(String.format("UserData: writeJSON: %s", this.birthday));
-				this.birthday_date = local_format.parse(this.birthday);
-			} else {
-				returnval = -7;
 			}
 			if (!jsonuserdata.isNull("gender")) {
 				this.gender = jsonuserdata.get("gender").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.gender));
 			} else {
+				returnval = -7;
+			}
+			if (!jsonuserdata.isNull("metric")) {
+				this.metric= jsonuserdata.get("metric").toString();
+				writeLog(String.format("UserData: writeJSON: %s", this.metric));
+			} else {
 				returnval = -8;
 			}
-			if (!jsonuserdata.isNull("height")) {
-				if (jsonuserdata.get("height") instanceof String) {
-					this.height = jsonuserdata.getString("height");
-					this.height_v = Double.parseDouble(this.height);
+			if (!jsonuserdata.isNull("height_v")) {
+				if (jsonuserdata.get("height_v") instanceof Double) {
+					this.height_v = jsonuserdata.getDouble("height_v");
+					writeLog(String.format("UserData: writeJSON: height_v instance of Double: %s", this.getHeight_v()));
 				} else {
-					if (jsonuserdata.get("height") instanceof Double) {
-						this.height_v = jsonuserdata.getDouble("height");
-						this.height = String.valueOf(this.height_v);
+					if (jsonuserdata.get("height_v") instanceof Long) {
+						this.height_v = (double) jsonuserdata.getLong("height_v");
+						writeLog(String.format("UserData: writeJSON: height_v instance of Long: %s", this.getHeight_v()));
+					} else {
+						if (jsonuserdata.get("height_v") instanceof Integer) {
+							this.height_v = (double) jsonuserdata.getInt("height_v");
+							writeLog(String.format("UserData: writeJSON: height_v instance of Integer: %s", this.getHeight_v()));
+						}
 					}
 				}
-				writeLog(String.format("UserData: writeJSON: %s", this.height));
+			} else {
+				returnval = -9;
+			}
+			if (!jsonuserdata.isNull("hip_circumference_v")) {
+				if (jsonuserdata.get("hip_circumference_v") instanceof Double) {
+					this.hip_circumference_v = jsonuserdata.getDouble("hip_circumference_v");
+					writeLog(String.format("UserData: writeJSON: hip_circumference_v instance of Double: %s", this.getHip_circumference_v()));
+				} else {
+					if (jsonuserdata.get("hip_circumference_v") instanceof Long) {
+						this.hip_circumference_v = (double) jsonuserdata.getLong("hip_circumference_v");
+						writeLog(String.format("UserData: writeJSON: hip_circumference_v instance of Long: %s", this.getHip_circumference_v()));
+					} else {
+						if (jsonuserdata.get("hip_circumference_v") instanceof Integer) {
+							this.hip_circumference_v = (double) jsonuserdata.getInt("hip_circumference_v");
+							writeLog(String.format("UserData: writeJSON: hip_circumference_v instance of Integer: %s", this.getHip_circumference_v()));
+						}
+					}
+				}
 			} else {
 				returnval = -10;
 			}
-			if (!jsonuserdata.isNull("hip_circumference")) {
-				if (jsonuserdata.get("hip_circumference") instanceof String) {
-					this.hip_circumference = jsonuserdata.getString("hip_circumference");
-					this.hip_circumference_v = Double.parseDouble(this.hip_circumference);
+			if (!jsonuserdata.isNull("current_weight_v")) {
+				if (jsonuserdata.get("current_weight_v") instanceof Double) {
+					this.current_weight_v = jsonuserdata.getDouble("current_weight_v");
+					writeLog(String.format("UserData: writeJSON: current_weight_v instance of Double: %s", this.getCurrent_weight_v()));
 				} else {
-					if (jsonuserdata.get("hip_circumference") instanceof Double) {
-						this.hip_circumference_v = jsonuserdata.getDouble("hip_circumference");
-						this.hip_circumference = String.valueOf(this.hip_circumference_v);
+					if (jsonuserdata.get("current_weight_v") instanceof Long) {
+						this.current_weight_v = (double) jsonuserdata.getLong("current_weight_v");
+						writeLog(String.format("UserData: writeJSON: current_weight_v instance of Long: %s", this.getCurrent_weight_v()));
+					} else {
+						if (jsonuserdata.get("current_weight_v") instanceof Integer) {
+							this.current_weight_v = (double) jsonuserdata.getInt("current_weight_v");
+							writeLog(String.format("UserData: writeJSON: current_weight_v instance of Integer: %s", this.getCurrent_weight_v()));
+						}
 					}
 				}
-				writeLog(String.format("UserData: writeJSON: %s", this.hip_circumference));
 			} else {
 				returnval = -11;
 			}
-			if (!jsonuserdata.isNull("weight_current")) {
-				if (jsonuserdata.get("weight_current") instanceof String) {
-					this.current_weight = jsonuserdata.getString("weight_current");
+			if (!jsonuserdata.isNull("current_fat_v")) {
+				if (jsonuserdata.get("current_fat_v") instanceof Double) {
+					this.current_fat_v = jsonuserdata.getDouble("current_fat_v");
+					writeLog(String.format("UserData: writeJSON: current_fat_v instance of Double: %s", this.getCurrent_fat_v()));
 				} else {
-					if (jsonuserdata.get("weight_current") instanceof Double) {
-						this.current_weight_v = jsonuserdata.getDouble("weight_current");
+					if (jsonuserdata.get("current_fat_v") instanceof Long) {
+						this.current_fat_v = (double) jsonuserdata.getLong("current_fat_v");
+						writeLog(String.format("UserData: writeJSON: current_fat_v instance of Long: %s", this.getCurrent_fat_v()));
+					} else {
+						if (jsonuserdata.get("current_fat_v") instanceof Integer) {
+							this.current_fat_v = (double) jsonuserdata.getInt("current_fat_v");
+							writeLog(String.format("UserData: writeJSON: current_fat_v instance of Integer: %s", this.getCurrent_fat_v()));
+						}
 					}
 				}
-				writeLog(String.format("UserData: writeJSON: %s", this.current_weight));
 			} else {
 				returnval = -12;
 			}
-			if (!jsonuserdata.isNull("fat_percentage")) {
-				if (jsonuserdata.get("fat_percentage") instanceof String) {
-					this.current_fat = jsonuserdata.get("fat_percentage").toString();
-					this.current_fat_v = Double.parseDouble(this.current_fat);
+			if (!jsonuserdata.isNull("target_weight_v")) {
+				if (jsonuserdata.get("target_weight_v") instanceof Double) {
+					this.target_weight_v = jsonuserdata.getDouble("target_weight_v");
+					writeLog(String.format("UserData: writeJSON: target_weight_v instance of Double: %s", this.getTarget_weight_v()));
 				} else {
-					if (jsonuserdata.get("fat_percentage") instanceof Double) {
-						this.current_fat_v = jsonuserdata.getDouble("fat_percentage");
-						this.current_fat = String.valueOf(this.current_fat_v);
+					if (jsonuserdata.get("target_weight_v") instanceof Long) {
+						this.target_weight_v = (double) jsonuserdata.getLong("target_weight_v");
+						writeLog(String.format("UserData: writeJSON: target_weight_v instance of Long: %s", this.getTarget_weight_v()));
+					} else {
+						if (jsonuserdata.get("target_weight_v") instanceof Integer) {
+							this.target_weight_v = (double) jsonuserdata.getInt("target_weight_v");
+							writeLog(String.format("UserData: writeJSON: target_weight_v instance of Integer: %s", this.getTarget_weight_v()));
+						}
 					}
 				}
-				writeLog(String.format("UserData: writeJSON: %s", this.current_fat));
 			} else {
 				returnval = -13;
 			}
-			if (!jsonuserdata.isNull("weight_target")) {
-				if (jsonuserdata.get("weight_target") instanceof String) {
-					this.target_weight = jsonuserdata.get("weight_target").toString();
-					this.target_weight_v = Double.parseDouble(this.current_weight);
+			if (!jsonuserdata.isNull("target_fat_v")) {
+				if (jsonuserdata.get("target_fat_v") instanceof Double) {
+					this.target_fat_v = jsonuserdata.getDouble("target_fat_v");
+					writeLog(String.format("UserData: writeJSON: target_fat_v instance of Double: %s", this.getTarget_weight_v()));
 				} else {
-					if (jsonuserdata.get("weight_target") instanceof Double) {
-						this.target_weight_v = jsonuserdata.getDouble("weight_target");
-						this.target_weight = String.valueOf(this.target_weight_v);
+					if (jsonuserdata.get("target_fat_v") instanceof Long) {
+						this.target_fat_v = (double) jsonuserdata.getLong("target_fat_v");
+						writeLog(String.format("UserData: writeJSON: target_fat_v instance of Long: %s", this.getTarget_weight_v()));
+					} else {
+						if (jsonuserdata.get("target_fat_v") instanceof Integer) {
+							this.target_fat_v = (double) jsonuserdata.getInt("target_fat_v");
+							writeLog(String.format("UserData: writeJSON: target_fat_v instance of Integer: %s", this.getTarget_weight_v()));
+						}
 					}
 				}
-				writeLog(String.format("UserData: writeJSON: %s", this.target_weight));
 			} else {
 				returnval = -14;
-			}
-			if (!jsonuserdata.isNull("fat_percentage_target")) {
-				if (jsonuserdata.get("fat_percentage_target") instanceof String) {
-					this.target_fat = jsonuserdata.getString("fat_percentage_target");
-					this.target_fat_v = Double.parseDouble(this.target_fat);
-				} else {
-					if (jsonuserdata.get("fat_percentage_target") instanceof Double) {
-						this.target_fat_v = jsonuserdata.getDouble("fat_percentage_target");
-						this.target_fat = String.valueOf(this.target_fat_v);
-					}
-				}
-				writeLog(String.format("UserData: writeJSON: %s", this.target_fat));
-			} else {
-				returnval = -15;
-			}
-			if (!jsonuserdata.isNull("unit_system")) {
-				if (jsonuserdata.get("unit_system") instanceof Integer) {
-					this.bMetricSystem = (jsonuserdata.getInt("unit_system") == 1);
-				} else {
-					if (jsonuserdata.get("unit_system") instanceof String) {
-						Integer isMetric = Integer.parseInt(jsonuserdata.getString("unit_system"));
-						this.bMetricSystem = (isMetric == 1);
-					}
-				}
-				writeLog(String.format("UserData: writeJSON: mMetricSystem: %b", this.bMetricSystem));
-			} else {
-				returnval = -16;
 			}
 			if (!jsonuserdata.isNull("resting_heart_rate")) {
 				if (jsonuserdata.get("resting_heart_rate") instanceof String) {
@@ -435,7 +440,7 @@ public class UserData implements Serializable {
 				}
 				writeLog(String.format(Locale.US, "UserData: writeJSON: resting_heart_rate: %.2f", this.resting_hr));
 			} else {
-				returnval = -17;
+				returnval = -16;
 			}
 			if (!jsonuserdata.isNull("recovery_heart_rate")) {
 				if (jsonuserdata.get("recovery_heart_rate") instanceof String) {
@@ -447,20 +452,16 @@ public class UserData implements Serializable {
 				}
 				writeLog(String.format(Locale.US, "UserData: writeJSON: recovery_hr: %.2f", this.recovery_hr));
 			} else {
-				returnval = -18;
+				returnval = -17;
 			}
 			if (!jsonuserdata.isNull("created")) {
 				this.created_at = jsonuserdata.get("created").toString();
-				writeLog(String.format("UserData: writeJSON: created_at: %s", this.created_at));
 			}
-
 			Calendar calendar_birth = Calendar.getInstance();
-			calendar_birth.setTime(this.birthday_date);
+			calendar_birth.setTime(this.getBirthday_date());
 			Calendar calendar_now = Calendar.getInstance();
 			this.age = calendar_now.get(Calendar.YEAR) - calendar_birth.get(Calendar.YEAR);
 			this.getValues();
-
-			writeLog(String.format(Locale.US, "UserData: writeJSON last line returning: %d for json: %s", returnval, jsonuserdata.toString()));
 		} catch (JSONException | ParseException e) {
 			e.printStackTrace();
 		}
@@ -476,11 +477,10 @@ public class UserData implements Serializable {
 		return (this.createJSON());
 	}
 
-
 	public void writeLog(String msg) {
 		Date datenow = new Date();
 		String date = date_format.format(datenow);
-//		Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
 	private void writeObject(java.io.ObjectOutputStream out)
@@ -498,7 +498,6 @@ public class UserData implements Serializable {
 		out.writeObject(this.status);
 		out.writeObject(this.created);
 		out.writeObject(this.created_at);
-		out.writeObject(this.gender_v);
 
 		out.writeObject(this.height_v);
 		out.writeObject(this.hip_circumference_v);
@@ -538,7 +537,6 @@ public class UserData implements Serializable {
 		out.writeObject(this.total_calories);
 		out.writeObject(this.no_runs);
 
-		out.writeObject(this.bMetricSystem);
 		out.writeObject(this.uid);
 		out.writeObject(this.uid_v);
 		out.writeObject(this.session_id);
@@ -562,7 +560,6 @@ public class UserData implements Serializable {
 		this.status = (String) in.readObject();
 		this.created = (String) in.readObject();
 		this.created_at = (String) in.readObject();
-		this.gender_v = (boolean) in.readObject();
 
 		this.height_v = (double) in.readObject();
 		this.hip_circumference_v = (double) in.readObject();
@@ -602,7 +599,6 @@ public class UserData implements Serializable {
 		this.total_calories = (double) in.readObject();
 		this.no_runs = (int) in.readObject();
 
-		this.bMetricSystem = (boolean) in.readObject();
 		this.uid = (String) in.readObject();
 		this.uid_v = (int) in.readObject();
 		this.session_id = (String) in.readObject();
@@ -626,7 +622,6 @@ public class UserData implements Serializable {
 		status = null;
 		created = null;
 		created = null;
-		gender_v = false;
 		height_v = -1;
 		hip_circumference_v = -1;
 		current_weight_v = -1;
@@ -661,7 +656,6 @@ public class UserData implements Serializable {
 		target_hr_moderate = -1;
 		target_hr_heavy = -1;
 		target_hr_very_heavy = -1;
-		bMetricSystem = false;
 		uid_v = -1;
 		total_runs = 0;
 		created_v = new Date(0);

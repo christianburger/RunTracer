@@ -169,7 +169,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 			RunData lrun;
 			lrun = (RunData) filteredActivityInfoMap.get(ckey);
 			lrun.getValues();
-			info = String.format(Locale.US, "%s\ndistance: %.2f \ncalories: %.2f", lrun.getStartTime(), lrun.getDistance_km_v(), lrun.getCalories_v_distance());
+			info = String.format(Locale.US, "%s\ndistance: %.2f \ncalories: %.2f", lrun.getRun_date_start(), lrun.getDistance_km_v(), lrun.getCalories_v_distance());
 		}
 		writeLog(String.format("getActivityInfo: %s", info));
 		return info;
@@ -204,7 +204,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				lruninfo.run_date_end_v= format.parse(lruninfo.run_date_end);
 				if (lruninfo.run_date_start_v.getTime() > 10000000) {
 					*/
-				if (lruninfo.getStartTime_v() > 10000000) {
+				if (lruninfo.getRun_date_start_v().getTime() > 10000000) {
 					writeLog(String.format(Locale.US, "adding to filteredActivityInfoMap: ckey: %d", ckey));
 					filteredActivityInfoMap.put(ckey, lruninfo);
 				}
@@ -242,7 +242,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				lruninfo = (RunData) filteredActivityInfoMap.get(ckey);
 				writeLog(String.format(Locale.US, "filteredActivityInfoMap.get(%d): run_date_start: %s", ckey, lruninfo.getRun_date_start()));
 				if ((lruninfo.getRun_id_v()> 0)) {
-					String data_info = getActivityInfo((int) lruninfo.getRun_id_v());
+					String data_info = getActivityInfo(lruninfo.getRun_id_v());
 					allActivity.add(data_info);
 					long pos = allActivity.indexOf(data_info);
 					listDataChildToRunIdCorrelation.put(pos, lruninfo.getRun_id_v());

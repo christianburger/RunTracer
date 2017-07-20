@@ -18,7 +18,6 @@ import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -30,8 +29,6 @@ import android.text.Html;
 import android.text.format.DateFormat;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -73,11 +70,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.NoSuchAlgorithmException;
 import java.text.NumberFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -90,6 +84,8 @@ import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener, OnCompleteListener<GetTokenResult> {
 
+	private SqliteHandler sqlLiteHandler;
+
 	private static final boolean DEVELOPER_MODE = false;
 	public static final int minimum_age = 12;
 	public static final int MAX_AVAILABLE = 1;
@@ -97,9 +93,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final String TAG = "runtracer";
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 	public static DataBaseExchange dbExchange;
-	public static UserData user_bio;
 	public static String lastHash = null;
 	private static SimpleOAuth2Token simpleOAuth2Token;
+
+	public static UserData user_bio;
+	public static UserData newUser;
 
 	File userdatafile;
 	File runmapfile;
@@ -119,13 +117,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	/* RequestCode for resolutions involving sign-in */
 	private static final int RC_SIGN_IN = 0;
-	private static final int NEW_USER_DATA = 1001;       // The request code
-	private static final int RUN_USER_DATA = 1002;       // The request code
-	private static final int LOGIN_USER_DATA = 1003;     // The request code
-	private static final int BLUETOOTH_LE = 4;        // The request code
-	private static final int USER_PROFILE = 1005;        // The request code
-	private static final int ACTIVITIES_DATA = 1006;     // The request code
-	private static final int ABOUT_YOU = 1007;            // The request code
+	private static final int NEW_USER_DATA = 10011;       // The request code
+	private static final int RUN_USER_DATA = 10021;       // The request code
+	private static final int LOGIN_USER_DATA = 10031;     // The request code
+	private static final int BLUETOOTH_LE = 10411;        // The request code
+	private static final int USER_PROFILE = 10051;        // The request code
+	private static final int ACTIVITIES_DATA = 10061;     // The request code
+	private static final int ABOUT_YOU = 10071;            // The request code
 
 	/* Keys for persisting instance variables in savedInstanceState */
 	private static final String KEY_IS_RESOLVING = "is_resolving";
@@ -176,23 +174,18 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private Button mMeasureRHR;
 	private Button mSignOutButton;
 
-	/* Is there is a ConnectionResult resolution in progress? */
 	private boolean mIsResolving = false;
-	/* Is google plus user successfully signed in */
 	private boolean mIsFirebaseSignedIn = false;
 	private boolean mIsEmailSignedIn = false;
 	private boolean mIsAuthenticated = false;
 
-	/* Should we automatically resolve ConnectionResults when possible? */
 	private boolean isBluetoothLeRegistered;
 
 	private boolean isUpdated;
-	private SqliteHandler sqlLiteHandler;
 	private SignInButton mGoogleSignIn;
 	private GoogleApiClient mGoogleApiClient;
 	private Button mNewUserButton;
 	private Button mEmailSignInButton;
-	private UserData newUser;
 
 	public MainActivity() {
 	}
@@ -203,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
 				.detectDiskReads()
 				.detectDiskWrites()
-				.detectNetwork()   // or .detectAll() for all detectable problems
+				.detectNetwork()
 				.penaltyLog()
 				.build());
 			StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
@@ -217,8 +210,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 		new SimpleEula(this).show();
 
-// Configure sign-in to request the user's ID, email address, and basic
-// profile. ID and basic profile are included in DEFAULT_SIGN_IN.
 		GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
 			.requestIdToken(getString(R.string.default_web_client_id))
 			.requestEmail()
@@ -233,7 +224,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		mAuth = FirebaseAuth.getInstance();
 		mAuthListener = this;
 
-		// Obtain the FirebaseAnalytics instance.
 		mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
 		try {
@@ -248,16 +238,16 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		user_bio = new UserData();
 		user_bio.getValues();
 		user_bio.setStatus("0");
-		user_bio.setBMetricSystem(false);
+		user_bio.setMetric("imperial");
 
 		sqlLiteHandler = new SqliteHandler(MainActivity.this);
 
 		isUpdated = false;
 
-		activityListMap = new HashMap<Long, Long>();
+		activityListMap = new HashMap<>();
 		activityListMap.clear();
 
-		activityInfoMap = new HashMap<Long, RunData>();
+		activityInfoMap = new HashMap<>();
 		activityInfoMap.clear();
 		local_registerReceiver();
 
@@ -266,12 +256,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		this.readFile();
 		this.updateUI();
 
-		// Restore from saved instance state
-		// [START restore_saved_instance_state]
 		if (savedInstanceState != null) {
 			mIsResolving = savedInstanceState.getBoolean(KEY_IS_RESOLVING);
 		}
-		// [END restore_saved_instance_state]
 	}
 
 	protected boolean writeFile() {
@@ -323,7 +310,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				writeLog("File found, reading data now: ");
 				user_bio = (UserData) obj_in.readObject();
 				user_bio.getValues();
-				mMetricSystem.setChecked(user_bio.isBMetricSystem());
+				mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric")==0);
 				userdata_ok = true;
 				f_in.close();
 			} else {
@@ -387,7 +374,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		JSONObject json = user_bio.createJSON();
+		JSONObject json = user_bio.toJSON();
 		writeLog(String.format(Locale.US, "onPause(): CALLING changeUserData: json: %s", json));
 		changeUserData(json);
 	}
@@ -409,76 +396,35 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		writeLog(String.format(Locale.US, "onDestroy(): CALLING changeUserData: json: %s", json));
 		changeUserData(json);
 		this.writeFile();
-		if (mBluetoothLeService != null && isBluetoothLeRegistered) {
-			unregisterReceiver(mGattUpdateReceiver);
-		}
-		writeLog(String.format(Locale.US, "onDestroy(): %s", json));
 		updateUI();
 	}
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.menu_main, menu);
-		return true;
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
-		//noinspection SimplifiableIfStatement
-		if (id == R.id.action_settings) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
-	}
-
 	public void newRun() {
+		Task<String> instanceId = mFirebaseAnalytics.getAppInstanceId();
+		writeLog("starting newRun(), instanceId: " + instanceId);
 		Intent intent = new Intent(this, RunActivity.class);
 		intent.putExtra("UserData", user_bio);
 		startActivityForResult(intent, RUN_USER_DATA);
+		writeLog("leaving newRun()");
 	}
 
-	public void loginUser(JSONObject userInfo) {
+	public void loginUser() {
 		Intent intent = new Intent(this, LoginActivity.class);
-		intent.putExtra("user_info", userInfo.toString());
 		startActivityForResult(intent, LOGIN_USER_DATA);
 	}
 
-	public void newUser(JSONObject userInfo) throws JSONException {
-		if (userInfo.isNull("metric")) {
-			userInfo.put("metric", user_bio.isBMetricSystem() ? 1 : 0);
-		}
-		writeLog(String.format(Locale.US, "userInfo: %s", userInfo.toString()));
+	public void newUser() {
+		newUser= new UserData();
+		newUser.setMetric(mMetricSystem.isChecked()?"metric":"imperial");
+		newUser.getValues();
 		Intent intent = new Intent(this, NewUserActivity.class);
-		intent.putExtra("user_info", userInfo.toString());
 		startActivityForResult(intent, NEW_USER_DATA);
 	}
 
-	public void userProfile(JSONObject userInfo) {
-		writeLog(String.format(Locale.US, "userProfile: 00 userInfo: %s", userInfo));
-		try {
-			userInfo.put("is_signed_in", mIsFirebaseSignedIn);
-			userInfo.put("full_name", user_bio.getFull_name());
-			userInfo.put("email", user_bio.getEmail());
-			userInfo.put("gender", user_bio.getGender());
-			userInfo.put("birthday", user_bio.getBirthday());
-			userInfo.put("height", user_bio.getHeight_v());
-			userInfo.put("hip_circumference", user_bio.getHip_circumference_v());
-			userInfo.put("weight", user_bio.getCurrent_weight_v());
-			userInfo.put("target_weight", user_bio.getTarget_weight_v());
-			userInfo.put("target_fat", user_bio.getTarget_fat_v());
-			userInfo.put("fat_percentage", user_bio.getCurrent_fat_v());
-			userInfo.put("metric", user_bio.isBMetricSystem() ? 1 : 0);
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		writeLog(String.format(Locale.US, "userProfile: 01 userInfo: %s", userInfo));
+	public void userProfile() {
+		writeLog(String.format(Locale.US, "userProfile: userInfo: %s", user_bio.toJSON()));
 		Intent intent = new Intent(this, ProfileActivity.class);
-		intent.putExtra("user_info", userInfo.toString());
+		intent.putExtra("user_info", user_bio.toJSON().toString());
 		startActivityForResult(intent, USER_PROFILE);
 	}
 
@@ -624,8 +570,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private void updateUI() {
 		user_bio.getValues();
-		user_bio.setBMetricSystem(mMetricSystem.isChecked());
-		if (user_bio.isBMetricSystem()) {
+		user_bio.setMetric(mMetricSystem.isChecked()?"imperial":"metric");
+		if (user_bio.getMetric().compareToIgnoreCase("metric")==0) {
 			mMetricSystem.setText(R.string.user_unit_system_metric);
 			mUserTargetWeight.setText(printValue(user_bio.getTarget_weight_v()));
 			mUserCurrentWeight.setText(printValue(user_bio.getCurrent_weight_v()));
@@ -775,75 +721,55 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			});
 	}
 
-	private int sendUserData() throws MalformedURLException, InterruptedException, JSONException {
+	private void createNewUser() {
 		String email, password;
-		if (newUser != null) {
-			email = newUser.getEmail();
-			password = newUser.getPassword();
-			writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: email: %s", email));
-			writeLog(String.format(Locale.US, "MainActivity: sendUserData: FirebaseUser: password: %s", password));
-			boolean dataok = false;
-			if (isServerReady()) {
-				available.acquire();
-				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.100/user/create"));
-				dbExchange.setCommand("send_user_data");
-				dbExchange.setMethod("POST");
-				dbExchange.setGrant_type(null);
-				dbExchange.setClient_id(null);
-				dbExchange.setClient_secret(null);
-				dbExchange.setJson_data_in(newUser.toJSON());
-
-				String hash = dbExchange.getHash();
-				available.release();
-				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-					dataok = sendServerDataServiceRequest(hash);
+		try {
+			if (newUser != null) {
+				email = newUser.getEmail();
+				password = newUser.getPassword();
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: FirebaseUser: email: %s", email));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: FirebaseUser: password: %s", password));
+				boolean dataok = false;
+				if (isServerReady()) {
+					available.acquire();
+					dbExchange.clear();
+					dbExchange.setUrl(new URL("http://192.168.1.100/user/create"));
+					dbExchange.setMethod("POST");
+					dbExchange.setGrant_type(null);
+					dbExchange.setClient_id(null);
+					dbExchange.setClient_secret(null);
+					dbExchange.setJson_data_in(newUser.toJSON());
+					String hash = dbExchange.getHash();
+					available.release();
+					for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
+						dataok = sendServerDataServiceRequest(hash);
+					}
 				}
 			}
+		} catch (InterruptedException | MalformedURLException e) {
+			e.printStackTrace();
 		}
-		return 0;
 	}
 
-	//Database method
-	private int changeUserData(JSONObject jsonUserData) {
+	private void changeUserData(JSONObject jsonUserData) {
 		boolean dataok = false;
-		int retval = 0;
 		try {
 			writeLog(String.format(Locale.US, "changeUserData: jsonUserData: %s", jsonUserData));
 			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
 				available.acquire();
 				dbExchange.clear();
-				//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-				dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
-				dbExchange.setCommand("change_user_data");
-				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
-				dbExchange.getJson_data_in().put("full_name", jsonUserData.get("full_name"));
-				dbExchange.getJson_data_in().put("email", jsonUserData.get("email"));
-				dbExchange.getJson_data_in().put("logged", "true");
-				dbExchange.getJson_data_in().put("dob", jsonUserData.get("dob"));
-				dbExchange.getJson_data_in().put("gender", jsonUserData.get("gender"));
-				dbExchange.getJson_data_in().put("height", jsonUserData.get("height"));
-				dbExchange.getJson_data_in().put("hip_circumference", jsonUserData.get("hip_circumference"));
-				dbExchange.getJson_data_in().put("weight", jsonUserData.get("weight"));
-				dbExchange.getJson_data_in().put("target_weight", jsonUserData.get("target_weight"));
-				dbExchange.getJson_data_in().put("fat", jsonUserData.get("fat"));
-				dbExchange.getJson_data_in().put("target_fat", jsonUserData.get("target_fat"));
-				dbExchange.getJson_data_in().put("metric", user_bio.isBMetricSystem() ? 1 : 0);
-				dbExchange.getJson_data_in().put("recovery_heart_rate", user_bio.getResting_hr());
-				dbExchange.getJson_data_in().put("resting_heart_rate", user_bio.getResting_hr());
+				dbExchange.setUrl(new URL("http://192.168.1.100/user/update"));
+				dbExchange.setJson_data_in(user_bio.toJSON());
 				String hash = dbExchange.getHash();
 				available.release();
 				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.getJson_data_in()));
 				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
 					dataok = sendServerDataServiceRequest(hash);
 				}
-			} else {
-				retval = -1;
 			}
-		} catch (JSONException | MalformedURLException | InterruptedException e) {
+		} catch (MalformedURLException | InterruptedException e) {
 			e.printStackTrace();
 		}
-		return retval;
 	}
 
 	private int getRunInfo(int run_id) throws MalformedURLException, JSONException, InterruptedException {
@@ -853,7 +779,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			dbExchange.clear();
 			//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
 			dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
-			dbExchange.setCommand("get_run_info");
 			Date dnow = new Date();
 			dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
 			dbExchange.getJson_data_in().put("uid", user_bio.getUid());
@@ -882,22 +807,24 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		return 0;
 	}
 
-	private int getAllRunInfo() throws MalformedURLException, JSONException, InterruptedException {
-		if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
-			if (isServerReady()) {
-				available.acquire();
-				dbExchange.clear();
-				//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-				dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
-				dbExchange.setCommand("get_all_run_info");
-				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
-				dbExchange.getJson_data_in().put("uid", user_bio.getUid());
-				dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
-				String hash = dbExchange.getHash();
-				available.release();
-				sendServerDataServiceRequest(hash);
-				writeLog("getAllRunInfo...");
+	private int getAllRunInfo() {
+		try {
+			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
+				if (isServerReady()) {
+					available.acquire();
+					dbExchange.clear();
+					dbExchange.setUrl(new URL("http://192.168.1.100/run/get"));
+					dbExchange.setCommand("get_all_run_info");
+					dbExchange.getJson_data_in().put("uid", user_bio.getUid());
+					dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
+					String hash = dbExchange.getHash();
+					available.release();
+					sendServerDataServiceRequest(hash);
+					writeLog("getAllRunInfo...");
+				}
 			}
+		} catch (InterruptedException | MalformedURLException | JSONException e) {
+			e.printStackTrace();
 		}
 		return 0;
 	}
@@ -922,7 +849,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onResume() {
 		super.onResume();
-		registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
 		isBluetoothLeRegistered = true;
 		if (mBluetoothLeService != null) {
 			mBluetoothLeService.connect(mDeviceAddress);
@@ -979,10 +905,10 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	}
 
-	// [START on_activity_result]
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
+		writeLog(String.format(Locale.US, "onActivityResult: requestCode= %d, resultCode= %d, requestCode==RUN_USER_DATA: %b", requestCode, resultCode, requestCode == RUN_USER_DATA));
 		if (requestCode == RC_SIGN_IN) {
 			writeLog(String.format(Locale.US, "onActivityResult: requestCode= %d, RC_SIGN_IN= %d", requestCode, RC_SIGN_IN));
 			writeLog(String.format(Locale.US, "onActivityResult: Intent data: %s", data != null ? data.toString() : "yep, it's actually null"));
@@ -991,24 +917,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			handleSignInResult(result);
 		}
 		if (requestCode == NEW_USER_DATA && resultCode == RESULT_OK) {
-			Bundle userData;
-			JSONObject jsonUserData;
-			try {
-				if (data.getExtras().getBundle("data") != null) {
-					userData = data.getExtras().getBundle("data");
-					assert userData != null;
-					if (userData.getString("user_data") != null) {
-						jsonUserData = new JSONObject(userData.getString("user_data"));
-						UserData newUser = new UserData().fromJSON(jsonUserData);
-						if (!jsonUserData.isNull("passwd")) {
-							newUser.setPassword(jsonUserData.getString("passwd"));
-							createFirebaseUser(newUser);
-						}
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			mAuth.createUserWithEmailAndPassword(newUser.getEmail(), newUser.getPassword());
 		}
 		if (requestCode == USER_PROFILE && resultCode == RESULT_OK) {
 			Bundle userData;
@@ -1019,7 +928,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					assert userData != null;
 					if (userData.getString("user_data") != null) {
 						jsonUserData = new JSONObject(userData.getString("user_data"));
-						user_bio.writeJSON(jsonUserData);
+						user_bio.fromJSON(jsonUserData);
 						writeLog(String.format(Locale.US, "onActivityResult: requestCode==USER_PROFILE: CALLING changeUserData: json: %s", jsonUserData));
 						changeUserData(jsonUserData);
 					}
@@ -1084,29 +993,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	}
 
-	private void createFirebaseUser(final UserData newUser) {
-		mAuth.createUserWithEmailAndPassword(newUser.getEmail(), newUser.getPassword());
-		this.newUser = newUser;
-		/*
-		.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-				@Override
-				public void onComplete(@NonNull Task<AuthResult> task) {
-					writeLog("createUserWithEmail:onComplete:" + task.isSuccessful());
-					if (task.isSuccessful()) {
-						try {
-							sendUserData(newUser.toJSON());
-						} catch (MalformedURLException | JSONException | InterruptedException e) {
-							e.printStackTrace();
-						}
-					} else {
-						writeLog("createUserWithEmail:onComplete: FAILED: task.isSuccessful(): " + task.isSuccessful());
-						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_LONG).show();
-					}
-				}
-			});
-			*/
-	}
-
 	private int getRunData(boolean bNeedsUpdate) throws MalformedURLException, JSONException, InterruptedException {
 		boolean updateOk = !bNeedsUpdate;
 		if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
@@ -1139,27 +1025,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.new_user_button:
-				JSONObject userinfo = null;
-				try {
-					userinfo = new JSONObject("{\"key\":\"data\"}");
-					this.newUser(userinfo);
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
+				this.newUser();
 				break;
 
 			case R.id.user_profile_button:
-				userinfo = user_bio.createJSON();
-				this.userProfile(userinfo);
+				this.userProfile();
 				break;
 
 			case R.id.email_login:
-				try {
-					userinfo = new JSONObject("{\"key\":\"data\"}");
-					this.loginUser(userinfo);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				this.loginUser();
 				break;
 
 			case R.id.btn_scan:
@@ -1171,6 +1045,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.new_run:
+				writeLog("Button new_run...");
 				this.newRun();
 				break;
 
@@ -1200,7 +1075,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_unit_system:
-				user_bio.setBMetricSystem(mMetricSystem.isChecked());
+				user_bio.setMetric(mMetricSystem.isChecked()?"metric":"imperial");
 				updateUI();
 				break;
 
@@ -1254,7 +1129,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (!mBluetoothLeService.initialize()) {
 				finish();
 			}
-			// Automatically connects to the device upon successful start-up initialization.
 			mBluetoothLeService.connect(mDeviceAddress);
 		}
 
@@ -1264,19 +1138,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	};
 
-	// Demonstrates how to iterate through the supported GATT Services/Characteristics.
-	// In this sample, we populate the data structure that is bound to the ExpandableListView
-	// on the UI.
 	private void displayGattServices(List<BluetoothGattService> gattServices) {
 		if (gattServices == null) return;
 		String uuid;
 		String unknownServiceString = getResources().getString(R.string.unknown_service);
 		String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
-		ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
-		ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData = new ArrayList<ArrayList<HashMap<String, String>>>();
-		ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
-
-		// Loops through available GATT Services.
 		for (BluetoothGattService gattService : gattServices) {
 			HashMap<String, String> currentServiceData = new HashMap<String, String>();
 			uuid = gattService.getUuid().toString();
@@ -1285,27 +1151,20 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			currentServiceData.put(LIST_NAME, SampleGattAttributes.lookup(uuid, unknownServiceString));
 			String LIST_UUID = "UUID";
 			currentServiceData.put(LIST_UUID, uuid);
-			gattServiceData.add(currentServiceData);
 			writeLog("new gattServiceData: BLE: " + currentServiceData.toString());
-			ArrayList<HashMap<String, String>> gattCharacteristicGroupData = new ArrayList<HashMap<String, String>>();
 			List<BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
-			ArrayList<BluetoothGattCharacteristic> charas = new ArrayList<BluetoothGattCharacteristic>();
 			// Loops through available Characteristics.
 			for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
-				charas.add(gattCharacteristic);
 				HashMap<String, String> currentCharaData = new HashMap<String, String>();
 				uuid = gattCharacteristic.getUuid().toString();
 				currentCharaData.put(LIST_NAME, SampleGattAttributes.lookup(uuid, unknownCharaString));
 				currentCharaData.put(LIST_UUID, uuid);
-				gattCharacteristicGroupData.add(currentCharaData);
 				writeLog("new item for currentCharaData: BLE " + currentCharaData.toString());
 				if (gattCharacteristic.getUuid().toString().matches("00002a37-0000-1000-8000-00805f9b34fb")) {
 					mBluetoothLeService.setCharacteristicNotification(gattCharacteristic, true);
 					writeLog("BLE found item for gattCharacteristic matching: " + "00002a37-0000-1000-8000-00805f9b34fb: " + gattCharacteristic.getUuid().toString());
 				}
 			}
-			mGattCharacteristics.add(charas);
-			gattCharacteristicData.add(gattCharacteristicGroupData);
 		}
 	}
 
@@ -1345,27 +1204,28 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	@Override
 	public void onComplete(@NonNull Task<GetTokenResult> task) {
-		writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onCompleteListener: FirebaseUser: task.isComplete: %s", task.isComplete()));
+		writeLog(String.format(Locale.US, "MainActivity:onCompleteListener: FirebaseUser: task.isComplete: %s", task.isComplete()));
 		if (task.isSuccessful()) {
 			String idToken = task.getResult().getToken();
-			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: idToken: %s", idToken));
-			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: this.newUser!=null: %b", this.newUser != null));
-			if (this.newUser != null) {
-				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: newUser.setIdToken(token: %s)", idToken));
+			writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: idToken: %s", idToken));
+			writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: this.newUser!=null: %b", newUser != null));
+			if (newUser != null) {
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: newUser.setIdToken(token: %s)", idToken));
 				newUser.setIdToken(idToken);
-				try {
-					sendUserData();
-				} catch (MalformedURLException | JSONException | InterruptedException e) {
-					e.printStackTrace();
-				}
+				createNewUser();
 			} else {
-				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: user_bio.setIdToken: %s", idToken));
 				user_bio.setIdToken(idToken);
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: task.: isSuccessful: %s isComplete:%s", task.isSuccessful(), task.isComplete()));
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: user_bio.getFull_name: %s", user_bio.getFull_name()));
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: user_bio.getUid_v: %s", user_bio.getUid_v()));
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: user_bio.getEmail: %s", user_bio.getEmail()));
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: user_bio.getIdToken: %s", user_bio.getIdToken()));
+				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: received IdToken: %s", idToken));
 				JSONObject jsonUserData = user_bio.toJSON();
 				getOauth2Token(jsonUserData);
 			}
 		} else {
-			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged onComplete: FirebaseUser: idToken: %s", "FAILED"));
+			writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: idToken: %s", "FAILED"));
 			user_bio.clean();
 			updateUI();
 		}
@@ -1374,45 +1234,21 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public class ResponseReceiver extends BroadcastReceiver {
 		public static final String ACTION_RESP = "com.runtracer.intent.action.MESSAGE_PROCESSED";
 
-		/**
-		 * This method is called when the BroadcastReceiver is receiving an Intent broadcast.
-		 * During this time you can use the other methods on BroadcastReceiver to view/modify the current result values.
-		 * This method is always called within the main thread of its process, unless you explicitly asked for it to be scheduled on a different thread using
-		 * {@link Context#registerReceiver(BroadcastReceiver,
-		 * IntentFilter, String, Handler)}. When it runs on the main thread you should never perform long-running operations in it (there is a timeout of
-		 * 10 seconds that the system allows before considering the receiver to be blocked and a candidate to be killed). You cannot launch a popup dialog
-		 * in your implementation of onReceive().
-		 * If this BroadcastReceiver was launched through a &lt;receiver&gt; tag, then the object is no longer alive after returning from this function.
-		 * This means you should not perform any operations that return a result to you asynchronously -- in particular, for interacting with services, you should use
-		 * {@link Context#startService(Intent)} instead of {@link Context#bindService(Intent, ServiceConnection, int)}.
-		 * If you wish to interact with a service that is already running, you can use {@link #peekService}.
-		 * The Intent filters used in {@link Context#registerReceiver} and in application manifests are not guaranteed to be exclusive. They are hints to the operating system
-		 * about how to find suitable recipients. It is possible for senders to force delivery to specific recipients, bypassing filter resolution.
-		 * For this reason, {@link #onReceive(Context, Intent) onReceive()} implementations should respond only to known actions, ignoring any unexpected Intents that they may receive.
-		 *
-		 * @param context The Context in which the receiver is running.
-		 * @param intent  The Intent being received.
-		 */
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			String response;
 			response = intent.getStringExtra("param_out_msg");
 			writeLog("MainActivity: ResponseReceiver: onReceive: json_data_in: " + dbExchange.getJson_data_in());
 			writeLog("MainActivity: ResponseReceiver: onReceive getJson_data_out(): " + dbExchange.getJson_data_out());
-
 			if (response.compareTo(lastHash) == 0) {
 				dbExchange.setPending(false);
 			} else {
 				writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: onReceive: response.compareTo(lastHash) == 0: %b ", (response.compareTo(lastHash) == 0)));
 			}
-			try {
-				processResponse(dbExchange);
-			} catch (InterruptedException | JSONException | IOException | ParseException | NoSuchAlgorithmException | CloneNotSupportedException e) {
-				e.printStackTrace();
-			}
+			processResponse(dbExchange);
 		}
 
-		private boolean updateRunInfo(int run_id, JSONObject json_run_info) throws IOException, JSONException, ParseException, NoSuchAlgorithmException {
+		private boolean updateRunInfo(int run_id, JSONObject json_run_info) {
 			boolean update_result = false;
 			RunData run_info = new RunData();
 			Date dnow = new Date();
@@ -1422,7 +1258,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (dnow.getTime() >= (long) activityListMap.get(run_id)) {
 					if (!activityInfoMap.containsKey(run_id)) {
 						if (!json_run_info.isNull("calories_distance")) {
-							writeLog(String.format("updateRunInfo: adding calories_distance: %s ", json_run_info.get("calories_distance")));
 							run_info.writeJSON(json_run_info);
 							activityInfoMap.put(run_id, run_info);
 							activityListMap.put(run_id, dnow.getTime() * 2); //unix time now x 2
@@ -1441,300 +1276,168 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			return update_result;
 		}
 
-		private int updateAllRunInfo(JSONObject json_all_run_info) throws IOException, JSONException, ParseException, NoSuchAlgorithmException {
-			int run_id;
-			int colidx, rowidx;
-			JSONObject json_run_info;
-			boolean eof = false;
-			RunData crun = new RunData();
-			user_bio.setTotal_distance_km(0);
-			user_bio.setTotal_distance_miles(0);
-			user_bio.setTotal_calories(0);
-			writeLog("updateAllRunInfo(JSONObject json_all_run_info): isUpdated being set to true.");
-			isUpdated = true;
-			for (rowidx = 0; !eof; rowidx++) {
-				json_run_info = new JSONObject("{\"key\":\"data\"}");
-				for (colidx = 0; colidx < (RunData.colsz + 1); colidx++) {
-					String key = String.format(Locale.US, "(%d:%d)", colidx, rowidx);
-					if (!json_all_run_info.isNull(key)) {
-						String newkey = crun.getKeyName(colidx);
-						json_run_info.put(newkey, json_all_run_info.get(key));
-					} else {
-						if (colidx == 0) {
-							eof = true;
-						}
-					}
-				}
-				if (!json_run_info.isNull("run_id")) {
-					run_id = Integer.parseInt((String) json_run_info.get("run_id"));
-					Date dnow = new Date();
-					activityListMap.put(run_id, dnow.getTime());
-					isUpdated = !updateRunInfo(run_id, json_run_info);
-					writeLog(String.format(Locale.US, "updateAllRunInfo: runid: %d received and updated.", run_id));
-				}
-			}
-			return 0;
-		}
-
-		public void processResponse(DataBaseExchange dbEx) throws InterruptedException, JSONException, IOException, ParseException, NoSuchAlgorithmException, CloneNotSupportedException {
+		public void processResponse(DataBaseExchange dbEx) {
 			Boolean bUserAlreadyCreated;
 			Boolean bUserStatusReady;
 			Boolean bUserValidated = false;
 			int sender = 0;
 			writeLog(String.format(Locale.CANADA, "processResponse: dbEx.getAttemptNo(): %d", dbEx.getAttemptNo()));
-			if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() < dbEx.getMaxAttempts()) {
-				final DataBaseExchange retry = (DataBaseExchange) dbEx.clone();
-				Handler handler = new Handler();
-				handler.postDelayed(new Runnable() {
-					@Override
-					public void run() {
-						available.release();
-						try {
-							sendServerDataServiceRequest(retry.getHash());
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+			try {
+				if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() < dbEx.getMaxAttempts()) {
+					final DataBaseExchange retry = (DataBaseExchange) dbEx.clone();
+					Handler handler = new Handler();
+					handler.postDelayed(new Runnable() {
+						@Override
+						public void run() {
+							available.release();
+							try {
+								sendServerDataServiceRequest(retry.getHash());
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
 						}
+					}, 20000);
+					Snackbar.make(findViewById(android.R.id.content), "Connectivity problem, could not update the server, retrying in 20 secs.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+				} else {
+					if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() >= dbEx.getMaxAttempts()) {
+						dbEx = DataBaseExchange.createDataBaseExchange();
 					}
-				}, 20000);
-				Snackbar.make(findViewById(android.R.id.content), "Connectivity problem, could not update the server, retrying in 20 secs.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-			} else {
-				if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() >= dbEx.getMaxAttempts()) {
-					dbEx = DataBaseExchange.createDataBaseExchange();
 				}
-			}
 
-			if (dbEx.getJson_data_out() != null && !dbEx.getJson_data_out().isNull("access_token")) {
-				MainActivity.simpleOAuth2Token = new SimpleOAuth2Token(dbEx.getJson_data_out().getString("access_token"));
-				MainActivity.simpleOAuth2Token.setExpiry(1000L * dbEx.getJson_data_out().getInt("expires_in"));
-				writeLog("MainActivity: processResponse: processing token: " + simpleOAuth2Token.toString());
-				updateUI();
-			}
+				if (dbEx.getJson_data_out() != null && !dbEx.getJson_data_out().isNull("access_token")) {
+					MainActivity.simpleOAuth2Token = new SimpleOAuth2Token(dbEx.getJson_data_out().getString("access_token"));
+					MainActivity.simpleOAuth2Token.setExpiry(1000L * dbEx.getJson_data_out().getInt("expires_in"));
+					writeLog("MainActivity: processResponse: processing token: " + simpleOAuth2Token.toString());
+					updateUI();
+				}
 
-			if (dbEx.getJson_data_out() == null || dbEx.getJson_data_out().isNull("status") || dbEx.getJson_data_out().isNull("created") || dbEx.getJson_data_out().isNull("sender")) {
-				user_bio.setStatus("0");
-				user_bio.setCreated("0");
-				return;
-			} else {
+				if (dbEx.getJson_data_out() == null || dbEx.getJson_data_out().isNull("status") || dbEx.getJson_data_out().isNull("created") || dbEx.getJson_data_out().isNull("sender")) {
+					user_bio.setStatus("0");
+					user_bio.setCreated("0");
+					return;
+				} else {
+					try {
+						if (!dbEx.getJson_data_out().isNull("status")) {
+							user_bio.setStatus(dbEx.getJson_data_out().get("status").toString());
+						}
+						if (!dbEx.getJson_data_out().isNull("created")) {
+							user_bio.setCreated(dbEx.getJson_data_out().get("created").toString());
+						}
+						if (!dbEx.getJson_data_out().isNull("sender") && dbEx.getJson_data_out().get("sender") instanceof Integer) {
+							sender = dbEx.getJson_data_out().getInt("sender");
+						}
+					} catch (JSONException e) {
+						writeLog(String.format(Locale.US, "processResponse: Exception 01: %s", e.toString()));
+						e.printStackTrace();
+						return;
+					}
+				}
 				try {
-					if (!dbEx.getJson_data_out().isNull("status")) {
+					if (!dbEx.getJson_data_out().isNull("status") && !dbEx.getJson_data_out().isNull("sender")) {
 						user_bio.setStatus(dbEx.getJson_data_out().get("status").toString());
 					}
-					if (!dbEx.getJson_data_out().isNull("created")) {
+					if (!dbEx.getJson_data_out().isNull("created") && !dbEx.getJson_data_out().isNull("sender")) {
 						user_bio.setCreated(dbEx.getJson_data_out().get("created").toString());
 					}
-					if (!dbEx.getJson_data_out().isNull("sender") && dbEx.getJson_data_out().get("sender") instanceof Integer) {
-						sender = dbEx.getJson_data_out().getInt("sender");
+					if (!dbEx.getJson_data_out().isNull("validated") && dbEx.getJson_data_out().get("validated") instanceof Integer && !dbEx.getJson_data_out().isNull("sender")) {
+						bUserValidated = 1 == dbEx.getJson_data_out().getInt("validated");
 					}
 				} catch (JSONException e) {
-					writeLog(String.format(Locale.US, "processResponse: Exception 01: %s", e.toString()));
+					writeLog(String.format(Locale.US, "processResponse: Exception 02: %s", e.toString()));
 					e.printStackTrace();
-					return;
 				}
-			}
-			try {
-				if (!dbEx.getJson_data_out().isNull("status") && !dbEx.getJson_data_out().isNull("sender")) {
-					user_bio.setStatus(dbEx.getJson_data_out().get("status").toString());
+				user_bio.getValues();
+				bUserAlreadyCreated = (user_bio.getCreated_v().after(new Date(0)) || user_bio.getCreated().compareTo("1") == 0);
+				bUserStatusReady = !(user_bio.getStatus().compareTo("0") == 0);
+
+				if (!bUserAlreadyCreated) {
+					Snackbar.make(findViewById(android.R.id.content), "User not created, select New User and create your profile.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 				}
-				if (!dbEx.getJson_data_out().isNull("created") && !dbEx.getJson_data_out().isNull("sender")) {
-					user_bio.setCreated(dbEx.getJson_data_out().get("created").toString());
+				if (bUserAlreadyCreated && !bUserStatusReady && !bUserValidated) {
+					Snackbar.make(findViewById(android.R.id.content), "User email not validated, check your email and create a password.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 				}
-				if (!dbEx.getJson_data_out().isNull("validated") && dbEx.getJson_data_out().get("validated") instanceof Integer && !dbEx.getJson_data_out().isNull("sender")) {
-					bUserValidated = 1 == dbEx.getJson_data_out().getInt("validated");
+
+				writeLog(String.format(Locale.US, "MainActivity: processResponse: before switch: sender: %d", sender));
+
+				switch (sender) {
+					case get_user_data:
+						break;
+
+					case send_user_data:
+						break;
+
+					case change_user_data:
+						writeLog(String.format(Locale.US, "processResponse: change_user_data: mIsAuthenticated; %s", mIsAuthenticated));
+						writeLog(String.format(Locale.US, "processResponse: change_user_data: mIsEmailSignedIn: %s", mIsEmailSignedIn));
+						break;
+
+					case auth_user:
+						if (bUserAlreadyCreated && bUserStatusReady) {
+							user_bio.fromJSON(dbEx.getJson_data_out());
+							mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric")==0);
+							writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
+							getRunData(!isUpdated);
+							updateUI();
+						} else {
+							if (!bUserAlreadyCreated) {
+								writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): CALLING newUser for newUser of: %s", newUser.toString()));
+								newUser();
+							}
+						}
+						break;
+					default:
 				}
-			} catch (JSONException e) {
-				writeLog(String.format(Locale.US, "processResponse: Exception 02: %s", e.toString()));
+			} catch (CloneNotSupportedException | MalformedURLException | JSONException | InterruptedException e) {
 				e.printStackTrace();
 			}
-			user_bio.getValues();
-			bUserAlreadyCreated = (user_bio.getCreated_v().after(new Date(0)) || user_bio.getCreated().compareTo("1") == 0);
-			bUserStatusReady = !(user_bio.getStatus().compareTo("0") == 0);
-
-			if (!bUserAlreadyCreated) {
-				Snackbar.make(findViewById(android.R.id.content), "User not created, select New User and create your profile.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-			}
-			if (bUserAlreadyCreated && !bUserStatusReady && !bUserValidated) {
-				Snackbar.make(findViewById(android.R.id.content), "User email not validated, check your email and create a password.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-			}
-
-			writeLog(String.format(Locale.US, "MainActivity: processResponse: before switch: sender: %d", sender));
-
-			switch (sender) {
-				case get_user_data:
-					break;
-
-				case send_user_data:
-					break;
-
-				case change_user_data:
-					writeLog(String.format(Locale.US, "processResponse: change_user_data: mIsAuthenticated; %s", mIsAuthenticated));
-					writeLog(String.format(Locale.US, "processResponse: change_user_data: mIsEmailSignedIn: %s", mIsEmailSignedIn));
-
-				case auth_user:
-					if (bUserAlreadyCreated && bUserStatusReady) {
-						user_bio.writeJSON(dbEx.getJson_data_out());
-						mMetricSystem.setChecked(user_bio.isBMetricSystem());
-						writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
-						getRunData(!isUpdated);
-						updateUI();
-					} else {
-						if (!bUserAlreadyCreated) {
-							JSONObject jsonData;
-							try {
-								jsonData = new JSONObject("{\"key\":\"data\"}");
-								jsonData.put("full_name", dbEx.getFull_name());
-								jsonData.put("email", dbEx.getAccountEmail());
-								jsonData.put("passwd", "");
-								jsonData.put("logged", "true");
-								jsonData.put("is_signed_in", mIsFirebaseSignedIn);
-								jsonData.put("gender", user_bio.getGender());
-								jsonData.put("birthday", user_bio.getBirthday());
-								jsonData.put("height", user_bio.getHeight());
-								jsonData.put("hip_circumference", user_bio.getHip_circumference());
-								jsonData.put("weight", user_bio.getCurrent_weight());
-								jsonData.put("target_weight", user_bio.getTarget_weight());
-								jsonData.put("target_fat", user_bio.getTarget_fat());
-								jsonData.put("fat_percentage", user_bio.getCurrent_fat());
-								jsonData.put("metric", user_bio.isBMetricSystem() ? 1 : 0);
-								writeLog(String.format(Locale.US, "jsonData: %s", jsonData.toString()));
-								newUser(jsonData);
-							} catch (JSONException e) {
-								writeLog(String.format(Locale.US, "processResponse: Exception 03: %s", e.toString()));
-								e.printStackTrace();
-							}
-						}
-					}
-					break;
-
-				case send_run_data:
-					if (mIsAuthenticated) {
-						getRunData(true);
-						JSONObject json = user_bio.createJSON();
-						writeLog(String.format(Locale.US, "processResponse: send_run_data: CALLING changeUserData: json: %s", json));
-						changeUserData(json);
-					}
-					break;
-
-				case get_run_ids:
-					int max_run_history_sz = 2000;
-					for (int i = 0; i < max_run_history_sz; i++) {
-						String key = (String.format(Locale.US, "value_%d", i));
-						if (!dbEx.getJson_data_out().isNull(key)) {
-							try {
-								String value = (String) dbEx.getJson_data_out().get(String.format(Locale.US, "value_%d", i));
-								getRunInfo(Integer.parseInt(value));
-							} catch (JSONException | MalformedURLException | InterruptedException e) {
-								writeLog(String.format(Locale.US, "processResponse: Exception 03: %s", e.toString()));
-								e.printStackTrace();
-							}
-						} else {
-							i = max_run_history_sz;
-						}
-					}
-					break;
-
-				case get_run_info:
-					try {
-						int runid_v;
-						String runid = (String) dbEx.getJson_data_out().get("runid");
-						runid_v = Integer.parseInt(runid);
-						updateRunInfo(runid_v, dbEx.getJson_data_out());
-					} catch (JSONException | ParseException | IOException | NoSuchAlgorithmException e) {
-						writeLog(String.format(Locale.US, "processResponse: Exception 04: %s", e.toString()));
-						e.printStackTrace();
-					}
-					break;
-
-				case get_all_run_info:
-					try {
-						updateAllRunInfo(dbEx.getJson_data_out());
-						updateUI();
-					} catch (JSONException | ParseException | IOException | NoSuchAlgorithmException e) {
-						writeLog(String.format(Locale.US, "processResponse: Exception 05: %s", e.toString()));
-						e.printStackTrace();
-					}
-					break;
-
-				default:
-			}
 		}
-	}
 
-	// Handles various events fired by the Service.
-	// ACTION_GATT_CONNECTED: connected to a GATT server.
-	// ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
-	// ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
-	// ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
-	//                        or notification operations.
-	private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			final String action = intent.getAction();
-			if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
-				writeLog("MainActivity: BroadcastReceiver: action is" + action);
-			} else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-				mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
-				mMeasureRHR.setEnabled(false);
-			} else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-				// Show all the supported services and characteristics on the user interface.
-				displayGattServices(mBluetoothLeService.getSupportedGattServices());
-				writeLog("BLE" + (mBluetoothLeService.getSupportedGattServices()).toString());
-				user_bio.setHr_reading(0);
-			} else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-				String data = (intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-				TextView t = (TextView) findViewById(R.id.heart_rate_value);
-				t.setText(data);
-				user_bio.setCurrent_hr(Double.parseDouble(data));
-				user_bio.setHr_reading(user_bio.getHr_reading() + 1);
-				if (user_bio.getHr_reading() > user_bio.getRESTING_NO_READINGS() && user_bio.getCurrent_hr() < user_bio.getRESTING_HR_MAX() && user_bio.getCurrent_hr() > user_bio.getRESTING_HR_MIN()) {
-					mMeasureRHR.setEnabled(true);
-					mMeasureRHR.setVisibility(Button.VISIBLE);
-				} else {
+		private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				final String action = intent.getAction();
+				if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+					writeLog("MainActivity: BroadcastReceiver: action is" + action);
+				} else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
 					mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
-				}
-				if ((user_bio.getLast_hr() < (user_bio.getCurrent_hr() - user_bio.getRESTING_HR_MARGIN())) || (user_bio.getLast_hr() > (user_bio.getCurrent_hr() + user_bio.getRESTING_HR_MARGIN()))) {
-					user_bio.setLast_hr(-1);
+					mMeasureRHR.setEnabled(false);
+				} else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+					// Show all the supported services and characteristics on the user interface.
+					displayGattServices(mBluetoothLeService.getSupportedGattServices());
+					writeLog("BLE" + (mBluetoothLeService.getSupportedGattServices()).toString());
 					user_bio.setHr_reading(0);
-				} else {
-					if (user_bio.getRhr_state() == READY) {
-						user_bio.setResting_hr(user_bio.getCurrent_hr());
-						user_bio.setRhr_state(ACQUIRED);
-						user_bio.getValues();
-						updateUI();
+				} else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
+					String data = (intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+					TextView t = (TextView) findViewById(R.id.heart_rate_value);
+					t.setText(data);
+					user_bio.setCurrent_hr(Double.parseDouble(data));
+					user_bio.setHr_reading(user_bio.getHr_reading() + 1);
+					if (user_bio.getHr_reading() > user_bio.getRESTING_NO_READINGS() && user_bio.getCurrent_hr() < user_bio.getRESTING_HR_MAX() && user_bio.getCurrent_hr() > user_bio.getRESTING_HR_MIN()) {
+						mMeasureRHR.setEnabled(true);
+						mMeasureRHR.setVisibility(Button.VISIBLE);
+					} else {
+						mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
 					}
+					if ((user_bio.getLast_hr() < (user_bio.getCurrent_hr() - user_bio.getRESTING_HR_MARGIN())) || (user_bio.getLast_hr() > (user_bio.getCurrent_hr() + user_bio.getRESTING_HR_MARGIN()))) {
+						user_bio.setLast_hr(-1);
+						user_bio.setHr_reading(0);
+					} else {
+						if (user_bio.getRhr_state() == READY) {
+							user_bio.setResting_hr(user_bio.getCurrent_hr());
+							user_bio.setRhr_state(ACQUIRED);
+							user_bio.getValues();
+							updateUI();
+						}
+					}
+					if (user_bio.getRhr_state() == MEASURING) {
+						mMeasureRHR.setText(String.format(Locale.getDefault(), "OK? (%.0f)", user_bio.getCurrent_hr()));
+					} else {
+						mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
+					}
+					user_bio.setLast_hr(user_bio.getCurrent_hr());
 				}
-				if (user_bio.getRhr_state() == MEASURING) {
-					mMeasureRHR.setText(String.format(Locale.getDefault(), "OK? (%.0f)", user_bio.getCurrent_hr()));
-				} else {
-					mMeasureRHR.setText(getString(R.string.user_resting_hr_button));
-				}
-				user_bio.setLast_hr(user_bio.getCurrent_hr());
 			}
-		}
-	};
-
-	private class RetrieveTokenTask extends AsyncTask<String, Void, String> {
-		private static final int REQ_SIGN_IN_REQUIRED = 11910;
-
-		protected String doInBackground(String... params) {
-		        /*
-		        String accountName = params[0];
-            String scopes = "oauth2:profile email";
-            //String scopes = "oauth2:email " + Scopes.PLUS_LOGIN;
-            String token = null;
-            writeLog("doInBackground running...");
-            try {
-                writeLog("doInBackground getToken( ..., " + accountName + " ,..);" );
-                token = GoogleAuthUtil.getToken(getApplicationContext(), accountName, scopes);
-            } catch (IOException e) {
-                writeLog(e.toString());
-            } catch (UserRecoverableAuthException e) {
-                startActivityForResult(e.getIntent(), REQ_SIGN_IN_REQUIRED);
-            } catch (GoogleAuthException e) {
-                writeLog(e.toString());
-            }
-            return token;
-            */
-			return null;
-		}
+		};
 	}
+
 }

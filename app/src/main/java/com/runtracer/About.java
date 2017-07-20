@@ -24,7 +24,7 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 	private String about_you = "";
 	private TextToSpeech tts;
 
-	private final double conv_kg_lbs= 2.2046226185;
+	private final double conv_kg_lbs = 2.2046226185;
 
 	//GUI elements
 	FloatingActionButton mSpeakAbout;
@@ -47,7 +47,7 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 		mAboutInfo = (TextView) findViewById(R.id.about_you);
 		mAboutInfo.setText(about_you);
 
-		mScrollable= (ScrollView) findViewById(R.id.scrollableContent);
+		mScrollable = (ScrollView) findViewById(R.id.scrollableContent);
 		mScrollable.scrollTo(0, 0);
 
 		//mDisclaimer = (TextView) findViewById(R.id.disclaimer);
@@ -61,10 +61,10 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 
-		tts=new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+		tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
 			@Override
 			public void onInit(int status) {
-				if(status != TextToSpeech.ERROR) {
+				if (status != TextToSpeech.ERROR) {
 					tts.setLanguage(Locale.US);
 				}
 			}
@@ -73,40 +73,40 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 	}
 
 	private String getAboutInfo() {
-		String info="";
-		info= String.format(Locale.CANADA, "%s, %d years old.", user_bio.getFull_name(), user_bio.getAge());
-		about_you=info;
-		info= String.format(Locale.CANADA, "\n\nBody Mass Index: %.2f%%", user_bio.getBmi());
-		about_you+=info;
-		info= String.format(Locale.CANADA, "\nBody Adiposity Index: %.2f%%", user_bio.getBai());
-		about_you+=info;
-		info= String.format(Locale.CANADA, "\nResting Metabolic Rate: %.0f KCal/day", user_bio.getRmr());
-		about_you+=info;
-		info= String.format(Locale.CANADA, "\nBasal Metabolic Rate: %.0f KCal/day", user_bio.getBmr());
-		about_you+=info;
-		info= String.format(Locale.CANADA, "\nMaximum Heart Rate: %.0f Hz", user_bio.getMaximum_hr());
-		about_you+=info;
-		info= "\n\nWeight Loss Info";
-		about_you+=info;
-		double max_cal_per_day= (user_bio.getBmi()* user_bio.getCurrent_weight_v()* 69 )/100;
-		double max_weight_loss_day_lb= max_cal_per_day / 3500;
-		double max_weight_loss_day_kg= max_weight_loss_day_lb / conv_kg_lbs;
-		if(user_bio.isBMetricSystem()) {
-			info= String.format(Locale.CANADA, "\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f kg of fat.", max_cal_per_day, max_weight_loss_day_kg );
+		String info = "";
+		info = String.format(Locale.CANADA, "%s, %d years old.", user_bio.getFull_name(), user_bio.getAge());
+		about_you = info;
+		info = String.format(Locale.CANADA, "\n\nBody Mass Index: %.2f%%", user_bio.getBmi());
+		about_you += info;
+		info = String.format(Locale.CANADA, "\nBody Adiposity Index: %.2f%%", user_bio.getBai());
+		about_you += info;
+		info = String.format(Locale.CANADA, "\nResting Metabolic Rate: %.0f KCal/day", user_bio.getRmr());
+		about_you += info;
+		info = String.format(Locale.CANADA, "\nBasal Metabolic Rate: %.0f KCal/day", user_bio.getBmr());
+		about_you += info;
+		info = String.format(Locale.CANADA, "\nMaximum Heart Rate: %.0f Hz", user_bio.getMaximum_hr());
+		about_you += info;
+		info = "\n\nWeight Loss Info";
+		about_you += info;
+		double max_cal_per_day = (user_bio.getBmi() * user_bio.getCurrent_weight_v() * 69) / 100;
+		double max_weight_loss_day_lb = max_cal_per_day / 3500;
+		double max_weight_loss_day_kg = max_weight_loss_day_lb / conv_kg_lbs;
+		if (user_bio.getMetric().compareToIgnoreCase("metric") == 0) {
+			info = String.format(Locale.CANADA, "\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f kg of fat.", max_cal_per_day, max_weight_loss_day_kg);
 		} else {
-			info= String.format(Locale.CANADA, "\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f pounds of fat.", max_cal_per_day, max_weight_loss_day_lb );
+			info = String.format(Locale.CANADA, "\nMaximum Calorie Deficit per day: %.2f, which is equivalent to about %.2f pounds of fat.", max_cal_per_day, max_weight_loss_day_lb);
 		}
-		about_you+=info;
-		info="\nThis equivalence varies widely depending on a number of factors and is provided only as a rough estimate.";
-		about_you+=info;
-		info= "\n\nCalorie deficits above these levels are dangerous and will likely result in lean mass loss (muscle) which in turn may reduce your metabolism and impact your weight loss.";
-		about_you+=info;
-		info= "\n\nInformation provided based on interpretation of the National Institute of Health guidelines and data provided by the user input and / or external devices.";
-		about_you+=info;
-		info= "\n\nPlease be sure to check the accuracy and precision of your external medical devices and be precise when filling your information as this will impact the results you see here.";
-		about_you+=info;
-		info= "\n\nPlease report any errors or miscalculations you observe while using the App and feel free to send us your suggestions by clicking the email button above.";
-		about_you+=info;
+		about_you += info;
+		info = "\nThis equivalence varies widely depending on a number of factors and is provided only as a rough estimate.";
+		about_you += info;
+		info = "\n\nCalorie deficits above these levels are dangerous and will likely result in lean mass loss (muscle) which in turn may reduce your metabolism and impact your weight loss.";
+		about_you += info;
+		info = "\n\nInformation provided based on interpretation of the National Institute of Health guidelines and data provided by the user input and / or external devices.";
+		about_you += info;
+		info = "\n\nPlease be sure to check the accuracy and precision of your external medical devices and be precise when filling your information as this will impact the results you see here.";
+		about_you += info;
+		info = "\n\nPlease report any errors or miscalculations you observe while using the App and feel free to send us your suggestions by clicking the email button above.";
+		about_you += info;
 		return about_you;
 	}
 
@@ -125,7 +125,7 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 
 	protected int speakText(String toSpeak) {
 		tts.speak(toSpeak, TextToSpeech.QUEUE_ADD, null);
-		return(0);
+		return (0);
 	}
 
 	private void stopSpeaking() {
@@ -138,7 +138,7 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 
 		Intent i = new Intent(Intent.ACTION_SEND);
 		i.setType("message/rfc822");
-		i.putExtra(Intent.EXTRA_EMAIL  , new String[]{"admin@runtracer.com"});
+		i.putExtra(Intent.EXTRA_EMAIL, new String[]{"admin@runtracer.com"});
 		i.putExtra(Intent.EXTRA_SUBJECT, "Suggestion");
 		i.putExtra(Intent.EXTRA_TEXT, "");
 		try {
@@ -147,7 +147,7 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 			Toast.makeText(About.this, "There are no email clients installed.", Toast.LENGTH_SHORT).show();
 		}
 
-		return(0);
+		return (0);
 	}
 
 	/**
@@ -159,8 +159,8 @@ public class About extends AppCompatActivity implements View.OnClickListener {
 	public void onClick(View v) {
 		switch (v.getId()) {
 			case R.id.speak_about:
-				this.playing= !this.playing;
-				if (this.playing ) {
+				this.playing = !this.playing;
+				if (this.playing) {
 					speakText(about_you);
 					//get the drawable
 					Drawable myFabSrc = getResources().getDrawable(android.R.drawable.ic_media_pause);

@@ -3,17 +3,30 @@
     <words>
       <w>authok</w>
       <w>authtokenok</w>
+      <w>caloriesdistance</w>
+      <w>calorieshr</w>
+      <w>cchar</w>
       <w>cdate</w>
       <w>circunference</w>
       <w>ckey</w>
       <w>colidx</w>
+      <w>colsz</w>
+      <w>conv</w>
       <w>dataok</w>
       <w>firebase</w>
+      <w>gpsdistance</w>
+      <w>gpsspeed</w>
       <w>healthcare</w>
+      <w>heartrate</w>
       <w>jsonuserdata</w>
+      <w>keyname</w>
+      <w>lretrieved</w>
+      <w>mdistance</w>
+      <w>mspeed</w>
       <w>objectstream</w>
       <w>passwd</w>
       <w>returnval</w>
+      <w>retval</w>
       <w>rowidx</w>
       <w>rundata</w>
       <w>runid</w>
@@ -23,6 +36,7 @@
       <w>runtracer</w>
       <w>sqlite</w>
       <w>stringtoprint</w>
+      <w>threadmill</w>
       <w>userdatafile</w>
     </words>
   </dictionary>

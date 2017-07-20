@@ -29,29 +29,8 @@ public class SqliteHandler extends SQLiteOpenHelper {
 	private static final SimpleDateFormat date_format_mysql = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
 	private static final int DATABASE_VERSION = 2;
 	private static final String DATABASE_NAME = "run_summary";
-
 	private static final int MAX_AVAILABLE = 1;
 	private static final Semaphore dbLock = new Semaphore(MAX_AVAILABLE, true);
-/*
-describe run_summary;
-+---------------------+-------------+------+-----+---------+----------------+
-| Field               | Type        | Null | Key | Default | Extra          |
-+---------------------+-------------+------+-----+---------+----------------+
-| uid                 | int(10)     | YES  |     | NULL    |                |
-| runid               | int(10)     | NO   | PRI | NULL    | auto_increment |
-| distance            | double      | YES  |     | NULL    |                |
-| gps_distance        | double      | YES  |     | NULL    |                |
-| average_speed       | double      | YES  |     | NULL    |                |
-| calories_distance   | double      | YES  |     | NULL    |                |
-| calories_heart_beat | double      | YES  |     | NULL    |                |
-| current_weight      | double      | YES  |     | NULL    |                |
-| current_fat         | double      | YES  |     | NULL    |                |
-| runtrace            | blob        | YES  |     | NULL    |                |
-| runtrace_md5sum     | varchar(80) | YES  |     | NULL    |                |
-| date_start          | datetime    | YES  |     | NULL    |                |
-| date_end            | datetime    | YES  |     | NULL    |                |
-+---------------------+-------------+------+-----+---------+----------------+
- */
 
 	private static final int NO_TABLES = 1;
 	private static final int TABLE_RUN_SUMMARY = 0;
@@ -97,31 +76,31 @@ describe run_summary;
 		dbtables.put(TABLE_RUN_SUMMARY, "run_summary");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_uid, "uid");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_uid, "INTEGER PRIMARY KEY");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_uid, "INTEGER");
 
-		dbtablefields[TABLE_RUN_SUMMARY].put(field_runid, "runid");
+		dbtablefields[TABLE_RUN_SUMMARY].put(field_runid, "run_id");
 		dbtabletypes[TABLE_RUN_SUMMARY].put(field_runid, "INTEGER PRIMARY KEY");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_distance, "distance");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_distance, "NUMERIC");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_distance, "REAL");
 
-		dbtablefields[TABLE_RUN_SUMMARY].put(field_gps_distance, "gps_distance");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_gps_distance, "NUMERIC");
+		dbtablefields[TABLE_RUN_SUMMARY].put(field_gps_distance, "distance_gps");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_gps_distance, "REAL");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_average_speed, "average_speed");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_average_speed, "NUMERIC");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_average_speed, "REAL");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_calories_distance, "calories_distance");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_calories_distance, "NUMERIC");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_calories_distance, "REAL");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_calories_heart_beat, "calories_heart_beat");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_calories_heart_beat, "NUMERIC");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_calories_heart_beat, "REAL");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_current_weight, "current_weight");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_current_weight, "NUMERIC");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_current_weight, "REAL");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_current_fat, "current_fat");
-		dbtabletypes[TABLE_RUN_SUMMARY].put(field_current_fat, "NUMERIC");
+		dbtabletypes[TABLE_RUN_SUMMARY].put(field_current_fat, "REAL");
 
 		dbtablefields[TABLE_RUN_SUMMARY].put(field_runtrace, "runtrace");
 		dbtabletypes[TABLE_RUN_SUMMARY].put(field_runtrace, "BLOB");
@@ -202,6 +181,7 @@ describe run_summary;
 	}
 
 	public synchronized void addRunSummary(JSONObject runSummaryJSON) {
+		writeLog(String.format(Locale.CANADA, "addRunSummary: %s", runSummaryJSON));
 		try {
 			dbLock.acquire();
 		} catch (InterruptedException e) {
@@ -241,6 +221,7 @@ describe run_summary;
 
 							case "INTEGER PRIMARY KEY":
 								writeLog(String.format(Locale.US, "SqliteHandler: addRunSummary: value for key: %s is: %s", key, "INTEGER PRIMARY KEY"));
+
 							case "INTEGER":
 								writeLog(String.format(Locale.US, "SqliteHandler: addRunSummary: value for key: %s is: %s", key, "INTEGER"));
 								if (runSummaryJSON.get(key) instanceof Long) {
@@ -250,8 +231,15 @@ describe run_summary;
 									if (runSummaryJSON.get(key) instanceof Integer) {
 										writeLog(String.format(Locale.US, "SqliteHandler: addRunSummary: Integer: contentValues.put(%s, %s) ", key, runSummaryJSON.getString(key)));
 										contentValues.put(key, runSummaryJSON.getInt(key));
+									} else {
+										if (runSummaryJSON.get(key) instanceof String) {
+											writeLog(String.format(Locale.US, "SqliteHandler: addRunSummary: String: contentValues.put(%s, Long.parseLong(%s)==%d) ", key, runSummaryJSON.getString(key), Long.parseLong(runSummaryJSON.getString(key))));
+											contentValues.put(key, Long.parseLong(runSummaryJSON.getString(key)));
+										}
 									}
 								}
+								break;
+
 							case "REAL":
 								writeLog(String.format(Locale.US, "SqliteHandler: addRunSummary: value for key: %s is: %s", key, "REAL"));
 								if (runSummaryJSON.get(key) instanceof Double) {
@@ -292,9 +280,10 @@ describe run_summary;
 			db.close(); // Closing database connection
 		}
 		dbLock.release();
+		writeLog(String.format(Locale.US, "SqliteHandler: addRunSummary: release db:dbLock.hasQueuedThreads(): %s", dbLock.hasQueuedThreads()));
 	}
 
-	public synchronized ArrayList<String> getAllRunSummary(Integer field) {
+	public synchronized ArrayList<String> getAllRunSummaries(Integer field) {
 		try {
 			dbLock.acquire();
 		} catch (InterruptedException e) {

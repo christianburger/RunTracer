@@ -1,6 +1,6 @@
 package com.runtracer;
-
 import android.util.Base64;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,8 +15,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -31,41 +29,24 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
-/*
-describe run_summary;
-+---------------------+-------------+------+-----+---------+----------------+
-| Field               | Type        | Null | Key | Default | Extra          |
-+---------------------+-------------+------+-----+---------+----------------+
-| uid                 | int(10)     | YES  |     | NULL    |                |
-| runid               | int(10)     | NO   | PRI | NULL    | auto_increment |
-| distance            | double      | YES  |     | NULL    |                |
-| gps_distance        | double      | YES  |     | NULL    |                |
-| average_speed       | double      | YES  |     | NULL    |                |
-| calories_distance   | double      | YES  |     | NULL    |                |
-| calories_heart_beat | double      | YES  |     | NULL    |                |
-| current_weight      | double      | YES  |     | NULL    |                |
-| current_fat         | double      | YES  |     | NULL    |                |
-| runtrace            | blob        | YES  |     | NULL    |                |
-| runtrace_md5sum     | varchar(80) | YES  |     | NULL    |                |
-| date_start          | datetime    | YES  |     | NULL    |                |
-| date_end            | datetime    | YES  |     | NULL    |                |
-+---------------------+-------------+------+-----+---------+----------------+
- */
-
 @Data
 @Getter
 @Setter
 public class RunData implements Serializable {
 	private static final long serialVersionUID = 100L;
+	private static final int ERROR = -1001;
 	private static final String TAG = "rundata";
-	private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
+	SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
 	private String run_date_start;
 	private String run_date_end;
-	private long run_id_v;
+	private Long run_id_v;
+	private Long uid_v;
+
 	final double conv_m_s_km_h = 3.6;
 	final double conv_km_miles = 0.621371192237;
-	private static final int ERROR = -1001;
+
 	static final int colsz = 12;
+
 	private Date run_date_start_v;
 	private Date run_date_end_v;
 
@@ -92,16 +73,6 @@ public class RunData implements Serializable {
 	private long ctime = 0;
 	private HashMap<Long, RunInstant> runtrace;
 	private String runtrace_md5sum;
-
-	public int getNoPoints() {
-		int nopoints = 0;
-		if (this.runtrace != null) {
-			nopoints = this.runtrace.size();
-		} else {
-			writeLog("getNoPoints returning 0");
-		}
-		return nopoints;
-	}
 
 	boolean pushInstant(double mspeed, double mdistance, double gpsspeed, double gpsdistance, double caloriesdistance, double calorieshr, int heartrate, double longitude, double latitude, double altitude) {
 		this.ctime = new Date().getTime();
@@ -192,10 +163,10 @@ public class RunData implements Serializable {
 		SimpleDateFormat datef1 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 		Date datenow = new Date();
 		String date = datef1.format(datenow);
-//		Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
-	public RunData() throws JSONException {
+	public RunData() {
 		run_date_start = "";
 		run_date_end = "";
 		run_date_start_v = new Date(0);
@@ -285,136 +256,133 @@ public class RunData implements Serializable {
 		return check;
 	}
 
-	JSONObject createJSON() throws JSONException, IOException, NoSuchAlgorithmException, ParseException {
+	public JSONObject toJSON() {
+		return (this.createJSON());
+	}
+
+	private JSONObject createJSON() {
+		JSONObject jsonRunData = null;
 		writeLog("createJSON ()...");
-		NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
-		DecimalFormat df = (DecimalFormat) nf;
-		JSONObject jsonRunData = new JSONObject("{\"key\":\"data\"}");
-		jsonRunData.accumulate("distance", df.format(this.distance_km_v));
-		jsonRunData.accumulate("distance_gps", df.format(this.gps_distance_km));
-		jsonRunData.accumulate("run_id", df.format(this.run_id_v));
-		jsonRunData.accumulate("average_speed", df.format(this.average_speed_km_h_v));
-		jsonRunData.accumulate("calories_distance", df.format(this.calories_v_distance));
-		jsonRunData.accumulate("calories_heart_beat", df.format(this.calories_v_heart_beat));
-		jsonRunData.accumulate("current_weight", df.format(this.current_weight_v));
-		jsonRunData.accumulate("current_fat", df.format(this.current_fat_v));
-		jsonRunData.accumulate("date_start", date_format.format(this.run_date_start_v));
-		jsonRunData.accumulate("date_end", date_format.format(this.run_date_end_v));
-		String encoded_runtrace_string;
-		byte[] objectstream_wr = writeObject(this.runtrace);
-		encoded_runtrace_string = Base64.encodeToString(objectstream_wr, Base64.DEFAULT);
-		jsonRunData.accumulate("runtrace", encoded_runtrace_string);
-		if (!jsonRunData.isNull("runtrace")) {
-			byte[] objectstream;
-			encoded_runtrace_string = (String) jsonRunData.get("runtrace");
-			String pattern = "(^([A-Za-z0-9+/\\\\]{4})*([A-Za-z0-9+/\\\\]{4}|[A-Za-z0-9+/\\\\]{3}=|[A-Za-z0-9+/\\\\]{2}==).*$)";
-			Pattern p = Pattern.compile(pattern, Pattern.DOTALL);
-			Matcher m = p.matcher(encoded_runtrace_string);
-			if (m.matches()) {
-				String encoded_runtrace_cleaned = m.group(0);
-				encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\n", "");
-				encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\r", "");
-				objectstream = Base64.decode(encoded_runtrace_cleaned, Base64.DEFAULT);
-				this.runtrace_md5sum = md5sum(objectstream);
-				writeLog(String.format(Locale.US, "createJSON: run_id: %d runtrace_md5sum: %s encoded_sz: %d start_date: %s", this.run_id_v, this.runtrace_md5sum, encoded_runtrace_string.length(), this.run_date_start));
-				jsonRunData.accumulate("runtrace_md5sum", this.runtrace_md5sum);
+		try {
+			jsonRunData = new JSONObject("{\"key\":\"data\"}");
+			jsonRunData.put("distance", this.distance_km_v);
+			jsonRunData.put("distance_gps", this.gps_distance_km);
+			jsonRunData.put("run_id_v", this.run_id_v);
+			jsonRunData.put("uid_v", this.uid_v);
+			jsonRunData.put("average_speed", this.average_speed_km_h_v);
+			jsonRunData.put("calories_distance", this.calories_v_distance);
+			jsonRunData.put("calories_heart_beat", this.calories_v_heart_beat);
+			jsonRunData.put("current_weight", this.current_weight_v);
+			jsonRunData.put("current_fat", this.current_fat_v);
+			jsonRunData.put("date_start", date_format.format(this.run_date_start_v));
+			jsonRunData.put("date_end", date_format.format(this.run_date_end_v));
+
+			String encoded_runtrace_string;
+			byte[] objectstream_wr = writeObject(this.runtrace);
+			encoded_runtrace_string = Base64.encodeToString(objectstream_wr, Base64.DEFAULT);
+			jsonRunData.put("runtrace", encoded_runtrace_string);
+			if (!jsonRunData.isNull("runtrace")) {
+				byte[] objectstream;
+				encoded_runtrace_string = (String) jsonRunData.get("runtrace");
+				String pattern = "(^([A-Za-z0-9+/\\\\]{4})*([A-Za-z0-9+/\\\\]{4}|[A-Za-z0-9+/\\\\]{3}=|[A-Za-z0-9+/\\\\]{2}==).*$)";
+				Pattern p = Pattern.compile(pattern, Pattern.DOTALL);
+				Matcher m = p.matcher(encoded_runtrace_string);
+				if (m.matches()) {
+					String encoded_runtrace_cleaned = m.group(0);
+					encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\n", "");
+					encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\r", "");
+					objectstream = Base64.decode(encoded_runtrace_cleaned, Base64.DEFAULT);
+					this.runtrace_md5sum = md5sum(objectstream);
+					writeLog(String.format(Locale.US, "createJSON: run_id: %d runtrace_md5sum: %s encoded_sz: %d start_date: %s", this.run_id_v, this.runtrace_md5sum, encoded_runtrace_string.length(), this.run_date_start));
+					jsonRunData.put("runtrace_md5sum", this.runtrace_md5sum);
+				}
 			}
+		} catch (NoSuchAlgorithmException | JSONException | IOException e) {
+			e.printStackTrace();
 		}
-		// public static final int colsz= 10;  << check this when modifying.
 		return jsonRunData;
 	}
 
-	@SuppressWarnings("unchecked")
-	int writeJSON(JSONObject json_run_data) throws JSONException, ParseException, IOException, NoSuchAlgorithmException {
-		if (!json_run_data.isNull("run_id")) {
-			this.run_id_v = json_run_data.getInt("run_id");
-		} else {
-			this.run_id_v = ERROR;
-		}
-		if (!json_run_data.isNull("distance")) {
-			this.distance_km_v = json_run_data.getDouble("distance");
-		}
-		if (!json_run_data.isNull("distance_gps")) {
-			this.gps_distance_km = json_run_data.getDouble("distance_gps");
-		}
-		if (!json_run_data.isNull("run_id")) {
-			this.run_id_v = Integer.parseInt((String) json_run_data.get("run_id"));
-		}
-		if (!json_run_data.isNull("average_speed")) {
-			this.average_speed_km_h_v = json_run_data.getDouble("average_speed");
-		}
-		if (!json_run_data.isNull("calories_distance")) {
-			this.calories_v_distance = json_run_data.getDouble("calories_distance");
-		}
-		if (!json_run_data.isNull("calories_heart_beat")) {
-			this.calories_v_heart_beat = json_run_data.getDouble("calories_heart_beat");
-		}
-		if (!json_run_data.isNull("current_weight")) {
-			this.current_weight_v = json_run_data.getDouble("current_weight");
-		}
-		if (!json_run_data.isNull("current_fat")) {
-			this.current_fat_v = json_run_data.getDouble("current_fat");
-		}
-		if (!json_run_data.isNull("date_start")) {
-			this.run_date_start = (String) json_run_data.get("date_start");
-		}
-		if (!json_run_data.isNull("date_end")) {
-			this.run_date_end = (String) json_run_data.get("date_end");
-		}
-		this.getValues();
-		this.run_date_start_v = new Date();
-		this.run_date_start_v = date_format.parse(this.run_date_start);
-		this.run_date_end_v = new Date();
-		this.run_date_end_v = date_format.parse(this.run_date_end);
+	public RunData fromJSON(JSONObject json) {
+		this.writeJSON(json);
+		return (this);
+	}
 
-		if (!json_run_data.isNull("runtrace")) {
-			byte[] objectstream = new byte[0];
-			String encoded_runtrace = (String) json_run_data.get("runtrace");
+	int writeJSON(JSONObject json_run_data) {
+		try {
+			if (!json_run_data.isNull("run_id_v") && json_run_data.get("run_id_v") instanceof Long ) {
+				this.run_id_v = json_run_data.getLong("run_id_v");
 
-			//writeLog(String.format("writeJSON: received: encoded_runtrace: %s", encoded_runtrace));
-			String pattern = "(^([A-Za-z0-9+/\\\\]{4})*([A-Za-z0-9+/\\\\]{4}|[A-Za-z0-9+/\\\\]{3}=|[A-Za-z0-9+/\\\\]{2}==).*$)";
-			Pattern p = Pattern.compile(pattern, Pattern.DOTALL);
-			Matcher m = p.matcher(encoded_runtrace);
-			if (m.matches()) {
-				String encoded_runtrace_cleaned = m.group(0);
-				//writeLog(String.format("writeJSON: received: encoded_runtrace_cleaned: %s and matched against the base64 pattern", encoded_runtrace_cleaned));
-				encoded_runtrace_cleaned= encoded_runtrace_cleaned.replace("\n", "").replace("\r", "");
-				try {
-					objectstream = Base64.decode(encoded_runtrace_cleaned, Base64.DEFAULT);
-				} catch (Exception e) {
-					writeLog(String.format("RunData: Exception: %s", e.toString()));
-					//writeLog(String.format("RunData: encoded_runtrace_cleaned: %s\nm: %s\nencoded_runtrace: %s \tsize: %d", encoded_runtrace_cleaned, m.group(0), encoded_runtrace, encoded_runtrace.length()));
-					e.printStackTrace();
+				if (!json_run_data.isNull("distance")) {
+					this.distance_km_v = json_run_data.getDouble("distance");
 				}
-				String md5sum_calculated = md5sum(objectstream);
-				String md5sum_received;
-				if (!json_run_data.isNull("runtrace_md5sum")) {
-					md5sum_received = (String) json_run_data.get("runtrace_md5sum");
-					if (md5sum_received.compareTo(md5sum_calculated) == 0) {
-						this.runtrace = (HashMap<Long, RunInstant>) readObject(objectstream);
+				if (!json_run_data.isNull("distance_gps")) {
+					this.gps_distance_km = json_run_data.getDouble("distance_gps");
+				}
+				if (!json_run_data.isNull("uid_v") && json_run_data.get("uid_v") instanceof Long) {
+					this.uid_v = json_run_data.getLong("uid_v");
+				}
+				if (!json_run_data.isNull("average_speed")) {
+					this.average_speed_km_h_v = json_run_data.getDouble("average_speed");
+				}
+				if (!json_run_data.isNull("calories_distance")) {
+					this.calories_v_distance = json_run_data.getDouble("calories_distance");
+				}
+				if (!json_run_data.isNull("calories_heart_beat")) {
+					this.calories_v_heart_beat = json_run_data.getDouble("calories_heart_beat");
+				}
+				if (!json_run_data.isNull("current_weight")) {
+					this.current_weight_v = json_run_data.getDouble("current_weight");
+				}
+				if (!json_run_data.isNull("current_fat")) {
+					this.current_fat_v = json_run_data.getDouble("current_fat");
+				}
+				if (!json_run_data.isNull("date_start")) {
+					this.run_date_start = (String) json_run_data.get("date_start");
+				}
+				if (!json_run_data.isNull("date_end")) {
+					this.run_date_end = (String) json_run_data.get("date_end");
+				}
+				this.getValues();
+				this.run_date_start_v = new Date();
+				this.run_date_start_v = date_format.parse(this.run_date_start);
+				this.run_date_end_v = new Date();
+				this.run_date_end_v = date_format.parse(this.run_date_end);
+
+				if (!json_run_data.isNull("runtrace")) {
+					byte[] objectstream = new byte[0];
+					String encoded_runtrace = (String) json_run_data.get("runtrace");
+
+					//writeLog(String.format("writeJSON: received: encoded_runtrace: %s", encoded_runtrace));
+					String pattern = "(^([A-Za-z0-9+/\\\\]{4})*([A-Za-z0-9+/\\\\]{4}|[A-Za-z0-9+/\\\\]{3}=|[A-Za-z0-9+/\\\\]{2}==).*$)";
+					Pattern p = Pattern.compile(pattern, Pattern.DOTALL);
+					Matcher m = p.matcher(encoded_runtrace);
+					if (m.matches()) {
+						String encoded_runtrace_cleaned = m.group(0);
+						//writeLog(String.format("writeJSON: received: encoded_runtrace_cleaned: %s and matched against the base64 pattern", encoded_runtrace_cleaned));
+						encoded_runtrace_cleaned = encoded_runtrace_cleaned.replace("\n", "").replace("\r", "");
+						try {
+							objectstream = Base64.decode(encoded_runtrace_cleaned, Base64.DEFAULT);
+						} catch (Exception e) {
+							writeLog(String.format("RunData: Exception: %s", e.toString()));
+							//writeLog(String.format("RunData: encoded_runtrace_cleaned: %s\nm: %s\nencoded_runtrace: %s \tsize: %d", encoded_runtrace_cleaned, m.group(0), encoded_runtrace, encoded_runtrace.length()));
+							e.printStackTrace();
+						}
+						String md5sum_calculated = md5sum(objectstream);
+						String md5sum_received;
+						if (!json_run_data.isNull("runtrace_md5sum")) {
+							md5sum_received = (String) json_run_data.get("runtrace_md5sum");
+							if (md5sum_received.compareTo(md5sum_calculated) == 0) {
+								this.runtrace = (HashMap<Long, RunInstant>) readObject(objectstream);
+							}
+						}
 					}
 				}
 			}
+		} catch (ParseException | JSONException | IOException | NoSuchAlgorithmException e) {
+			e.printStackTrace();
 		}
-		return (0);
-	}
-
-	String getStartTime() {
-		SimpleDateFormat dformat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.getDefault());
-		return (dformat.format(this.run_date_start_v));
-	}
-
-	String getEndTime() {
-		SimpleDateFormat dformat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.getDefault());
-		return (dformat.format(this.run_date_end_v));
-	}
-
-	Long getStartTime_v() {
-		return (this.run_date_start_v.getTime());
-	}
-
-	Long getEndTime_v() {
-		return (this.run_date_start_v.getTime());
+		return 0;
 	}
 
 	boolean setStartTime() {
@@ -476,6 +444,7 @@ public class RunData implements Serializable {
 		out.writeObject(this.run_date_start);
 		out.writeObject(this.run_date_end);
 		out.writeObject(this.run_id_v);
+		out.writeObject(this.uid_v);
 		out.writeObject(this.run_date_start_v);
 		out.writeObject(this.run_date_end_v);
 		out.writeObject(this.average_speed_km_h_v);
@@ -506,7 +475,8 @@ public class RunData implements Serializable {
 	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
 		this.run_date_start = (String) in.readObject();
 		this.run_date_end = (String) in.readObject();
-		this.run_id_v = (int) in.readObject();
+		this.run_id_v = (Long) in.readObject();
+		this.uid_v = (Long) in.readObject();
 		this.run_date_start_v = (Date) in.readObject();
 		this.run_date_end_v = (Date) in.readObject();
 		this.average_speed_km_h_v = (double) in.readObject();
