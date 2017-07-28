@@ -1,4 +1,4 @@
-package com.runtracer;
+package com.runtracer.model;
 import android.util.Base64;
 import android.util.Log;
 
@@ -74,7 +74,7 @@ public class RunData implements Serializable {
 	private HashMap<Long, RunInstant> runtrace;
 	private String runtrace_md5sum;
 
-	boolean pushInstant(double mspeed, double mdistance, double gpsspeed, double gpsdistance, double caloriesdistance, double calorieshr, int heartrate, double longitude, double latitude, double altitude) {
+	public boolean pushInstant(double mspeed, double mdistance, double gpsspeed, double gpsdistance, double caloriesdistance, double calorieshr, int heartrate, double longitude, double latitude, double altitude) {
 		this.ctime = new Date().getTime();
 		RunInstant tmp = new RunInstant();
 		tmp.current_motion_speed_km_h_v = mspeed;
@@ -385,7 +385,7 @@ public class RunData implements Serializable {
 		return 0;
 	}
 
-	boolean setStartTime() {
+	public boolean setStartTime() {
 		this.run_date_start_v = new Date();
 		Calendar ccdate = Calendar.getInstance();
 		ccdate.setTime(this.run_date_start_v);
@@ -404,7 +404,7 @@ public class RunData implements Serializable {
 		return (true);
 	}
 
-	boolean setEndTime() {
+	public boolean setEndTime() {
 		this.run_date_end_v = new Date();
 		Calendar ccdate = Calendar.getInstance();
 		ccdate.setTime(this.run_date_end_v);
@@ -422,7 +422,7 @@ public class RunData implements Serializable {
 		return (true);
 	}
 
-	int getValues() {
+	public int getValues() {
 		this.distance_miles_v = this.distance_km_v * this.conv_km_miles;
 		this.average_speed_miles_h_v = this.average_speed_km_h_v * this.conv_km_miles;
 		this.current_speed_miles_h_v = this.current_speed_km_h_v * this.conv_km_miles;
@@ -430,7 +430,7 @@ public class RunData implements Serializable {
 		return (0);
 	}
 
-	int getDateValues() throws ParseException {
+	public int getDateValues() throws ParseException {
 		this.getValues();
 		this.run_date_start_v = new Date();
 		this.run_date_start_v = date_format.parse(this.run_date_start);

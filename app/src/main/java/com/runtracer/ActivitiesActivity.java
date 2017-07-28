@@ -18,6 +18,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.runtracer.model.RunData;
+import com.runtracer.model.UserData;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

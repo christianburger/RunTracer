@@ -11,7 +11,7 @@ import android.support.annotation.Nullable;
 import android.text.format.DateFormat;
 import android.util.Log;
 
-import com.runtracer.RunData;
+import com.runtracer.model.RunData;
 
 import org.json.JSONException;
 import org.json.JSONObject;

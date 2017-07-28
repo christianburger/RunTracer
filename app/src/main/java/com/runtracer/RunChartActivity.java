@@ -15,6 +15,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
 
+import com.runtracer.model.RunData;
+import com.runtracer.model.RunInstant;
+import com.runtracer.model.UserData;
+
 import java.io.UnsupportedEncodingException;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -135,7 +139,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		writeLog("RunChartActivity: received: runtrace:");
 		if (run_data.getRuntrace() != null && run_data.getRuntrace().size() > 0) {
-			List keys = (List<Long>) new ArrayList(run_data.getRuntrace().keySet());
+			List <Long>keys = (List<Long>) new ArrayList(run_data.getRuntrace().keySet());
 			Collections.sort(keys);
 			Iterator it = keys.iterator();
 			for (; it.hasNext(); ) {
@@ -143,9 +147,9 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 				RunInstant tmp_instant = new RunInstant();
 				tmp_instant = run_data.getRuntrace().get(it.next());
 				if (user_data.getMetric().compareToIgnoreCase("metric") == 0) {
-					speed = tmp_instant.current_motion_speed_km_h_v * run_data.conv_km_miles / run_data.conv_km_miles;
+					speed = tmp_instant.current_motion_speed_km_h_v;
 				} else {
-					speed = tmp_instant.current_motion_speed_km_h_v * run_data.conv_km_miles;
+					speed = tmp_instant.current_motion_speed_km_h_v * run_data.getConv_km_miles();
 				}
 				code += String.format(Locale.CANADA, "\n[%d, %d, %s, %s, %s],", (tmp_instant.current_time - starting_time) / 1000, tmp_instant.current_heart_rate, nf.format(speed), nf.format(tmp_instant.calories_v_distance), nf.format(tmp_instant.calories_v_heart_beat));
 			}

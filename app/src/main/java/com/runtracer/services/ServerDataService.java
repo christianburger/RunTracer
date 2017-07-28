@@ -55,7 +55,6 @@ public class ServerDataService extends IntentService {
 		super("ServerDataService");
 		simpleOAuth2Token = new SimpleOAuth2Token("", new Date());
 		localDbExchange = DataBaseExchange.createDataBaseExchange();
-		simpleOAuth2Token.setToken("Fgasdjv|@#68961834bdjkagksfjhas");
 		writeLog("\n\n\n\n\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nServerDataService: starting ServerDataService...");
 	}
 
@@ -198,6 +197,7 @@ public class ServerDataService extends IntentService {
 				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_secret\", dbEx.getClient_secret(): %s)", dbEx.getClient_secret()));
 				String userCredentials = dbEx.getClient_id() + ":" + dbEx.getClient_secret();
 				String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.DEFAULT);
+				writeLog(String.format(Locale.CANADA, "ServerDataService:doExchange: basicAuth: %s", basicAuth));
 				httpConnection.setRequestProperty("Authorization", basicAuth);
 				httpConnection.setRequestMethod("POST");
 				httpConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");

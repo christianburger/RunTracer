@@ -15,6 +15,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.runtracer.model.UserData;
+
 import java.util.Locale;
 
 public class About extends AppCompatActivity implements View.OnClickListener {

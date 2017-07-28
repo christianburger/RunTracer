@@ -53,6 +53,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.runtracer.model.RunData;
+import com.runtracer.model.UserData;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.services.DataBaseExchange;
 import com.runtracer.services.ServerDataService;
@@ -310,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				writeLog("File found, reading data now: ");
 				user_bio = (UserData) obj_in.readObject();
 				user_bio.getValues();
-				mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric")==0);
+				mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
 				userdata_ok = true;
 				f_in.close();
 			} else {
@@ -392,7 +394,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		JSONObject json = user_bio.createJSON();
+		JSONObject json = user_bio.toJSON();
 		writeLog(String.format(Locale.US, "onDestroy(): CALLING changeUserData: json: %s", json));
 		changeUserData(json);
 		this.writeFile();
@@ -414,8 +416,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	public void newUser() {
-		newUser= new UserData();
-		newUser.setMetric(mMetricSystem.isChecked()?"metric":"imperial");
+		newUser = new UserData();
+		newUser.setMetric(mMetricSystem.isChecked() ? "metric" : "imperial");
 		newUser.getValues();
 		Intent intent = new Intent(this, NewUserActivity.class);
 		startActivityForResult(intent, NEW_USER_DATA);
@@ -570,8 +572,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private void updateUI() {
 		user_bio.getValues();
-		user_bio.setMetric(mMetricSystem.isChecked()?"imperial":"metric");
-		if (user_bio.getMetric().compareToIgnoreCase("metric")==0) {
+		user_bio.setMetric(mMetricSystem.isChecked() ? "imperial" : "metric");
+		if (user_bio.getMetric().compareToIgnoreCase("metric") == 0) {
 			mMetricSystem.setText(R.string.user_unit_system_metric);
 			mUserTargetWeight.setText(printValue(user_bio.getTarget_weight_v()));
 			mUserCurrentWeight.setText(printValue(user_bio.getCurrent_weight_v()));
@@ -675,19 +677,42 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		return result;
 	}
 
-	private boolean getOauth2Token(JSONObject jsonUserData) {
+	private boolean sendFirebaseToken() {
 		try {
 			if (isServerReady()) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.100:8080/auth/oauth/token"));
+				dbExchange.setUrl(new URL("http://192.168.1.101/user/firebase/update_token"));
+				dbExchange.setCommand("send_firebase_token");
+				dbExchange.setMethod("POST");
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				dbExchange.setJson_data_in(user_bio.toJSON());
+				String hash = dbExchange.getHash();
+				available.release();
+				sendServerDataServiceRequest(hash);
+			}
+		} catch (MalformedURLException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return true;
+	}
+
+	private boolean getOAuth2Token(JSONObject jsonUserData) {
+		try {
+			if (isServerReady()) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.101:8080/auth/oauth/token"));
 				dbExchange.setCommand("get_token");
 				dbExchange.setAccountEmail(jsonUserData.isNull("email") ? null : jsonUserData.getString("email"));
 				dbExchange.setFull_name(jsonUserData.isNull("full_name") ? null : jsonUserData.getString("full_name"));
 				dbExchange.setGrant_type("client_credentials");
 				dbExchange.setMethod("POST");
-				dbExchange.setClient_id("admin");
-				dbExchange.setClient_secret("password");
+				dbExchange.setClient_id(user_bio.getIdToken());
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
 				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
 				dbExchange.getJson_data_in().put("email", jsonUserData.isNull("email") ? "-" : jsonUserData.get("email"));
 				dbExchange.getJson_data_in().put("passwd", jsonUserData.isNull("passwd") ? "-" : jsonUserData.get("passwd"));
@@ -722,18 +747,28 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	private void createNewUser() {
-		String email, password;
 		try {
 			if (newUser != null) {
-				email = newUser.getEmail();
-				password = newUser.getPassword();
-				writeLog(String.format(Locale.US, "MainActivity: createNewUser: FirebaseUser: email: %s", email));
-				writeLog(String.format(Locale.US, "MainActivity: createNewUser: FirebaseUser: password: %s", password));
+				newUser.getValues();
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Full Name: %s", newUser.getFull_name()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: First Name: %s", newUser.getFirst_name()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Last Name: %s", newUser.getLast_name()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Email: %s", newUser.getEmail()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Password: %s", newUser.getPassword()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Birthday: %s", newUser.getBirthday_date()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Gender: %s", newUser.getGender()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Height: %f", newUser.getHeight_v()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Hip Circumference: %f", newUser.getHip_circumference_v()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Current Weight: %f", newUser.getCurrent_weight_v()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Target Weight: %f", newUser.getTarget_weight_v()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Current Fat%% %f", newUser.getCurrent_fat_v()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Target Fat%% %f", newUser.getTarget_fat_v()));
+				writeLog(String.format(Locale.US, "MainActivity: createNewUser: Unit System: %s", newUser.getMetric()));
 				boolean dataok = false;
 				if (isServerReady()) {
 					available.acquire();
 					dbExchange.clear();
-					dbExchange.setUrl(new URL("http://192.168.1.100/user/create"));
+					dbExchange.setUrl(new URL("http://192.168.1.101/user/create"));
 					dbExchange.setMethod("POST");
 					dbExchange.setGrant_type(null);
 					dbExchange.setClient_id(null);
@@ -758,7 +793,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.100/user/update"));
+				dbExchange.setUrl(new URL("http://192.168.1.101/user/update"));
 				dbExchange.setJson_data_in(user_bio.toJSON());
 				String hash = dbExchange.getHash();
 				available.release();
@@ -778,7 +813,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			available.acquire();
 			dbExchange.clear();
 			//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-			dbExchange.setUrl(new URL("http://192.168.1.100:8082/health"));
+			dbExchange.setUrl(new URL("http://192.168.1.101:8082/health"));
 			Date dnow = new Date();
 			dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
 			dbExchange.getJson_data_in().put("uid", user_bio.getUid());
@@ -813,7 +848,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (isServerReady()) {
 					available.acquire();
 					dbExchange.clear();
-					dbExchange.setUrl(new URL("http://192.168.1.100/run/get"));
+					dbExchange.setUrl(new URL("http://192.168.1.101/run/get"));
 					dbExchange.setCommand("get_all_run_info");
 					dbExchange.getJson_data_in().put("uid", user_bio.getUid());
 					dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
@@ -872,14 +907,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			public void onComplete(@NonNull Task<AuthResult> task) {
 				if (task.isSuccessful()) {
 					// Sign in success, update UI with the signed-in user's information
-					Log.d(TAG, "signInWithCredential:success");
+					writeLog("signInWithCredential:success");
 					FirebaseUser user = mAuth.getCurrentUser();
 					if (user != null) {
 						user_bio.setFull_name(user.getDisplayName());
 						user_bio.setEmail(user.getEmail());
 						user_bio.setFull_name(user.getDisplayName());
 					}
-					getOauth2Token(user_bio.toJSON());
 					updateUI();
 				} else {
 					// If sign in fails, display a message to the user.
@@ -1075,7 +1109,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_unit_system:
-				user_bio.setMetric(mMetricSystem.isChecked()?"metric":"imperial");
+				user_bio.setMetric(mMetricSystem.isChecked() ? "metric" : "imperial");
 				updateUI();
 				break;
 
@@ -1188,14 +1222,26 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			String uid = user.getUid();
 			Task<GetTokenResult> promise = user.getIdToken(true);
 			promise.addOnCompleteListener(this);
-			writeLog("onAuthStateChanged:signed_in:" + user.getUid());
-			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: name: %s", name));
-			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: email: %s", email));
-			writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: uid: %s", uid));
-			user_bio.setFull_name(name);
-			user_bio.setEmail(email);
-			mIsFirebaseSignedIn = true;
-			mStatus.setText(String.format("%s%s", getString(R.string.signed_in_message), user.getEmail()));
+			if (newUser != null) {
+				user.sendEmailVerification();
+				if (user.getDisplayName() != null && user.getDisplayName().length() > 4) {
+					newUser.setFull_name(user.getDisplayName());
+				}
+				newUser.setEmail(user.getEmail());
+				writeLog("onAuthStateChanged:signed_in:" + user.getUid());
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged new user: FirebaseUser: name: %s", name));
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged new user: FirebaseUser: email: %s", email));
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged new user: FirebaseUser: uid: %s", uid));
+			} else {
+				writeLog("onAuthStateChanged:signed_in:" + user.getUid());
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: name: %s", name));
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: email: %s", email));
+				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: uid: %s", uid));
+				user_bio.setFull_name(name);
+				user_bio.setEmail(email);
+				mIsFirebaseSignedIn = true;
+				mStatus.setText(String.format("%s%s", getString(R.string.signed_in_message), user.getEmail()));
+			}
 		} else {
 			mIsFirebaseSignedIn = false;
 			writeLog("onAuthStateChanged:signed_out");
@@ -1212,7 +1258,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (newUser != null) {
 				writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: newUser.setIdToken(token: %s)", idToken));
 				newUser.setIdToken(idToken);
+				user_bio = newUser;
 				createNewUser();
+				newUser = null;
 			} else {
 				user_bio.setIdToken(idToken);
 				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: task.: isSuccessful: %s isComplete:%s", task.isSuccessful(), task.isComplete()));
@@ -1221,9 +1269,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: user_bio.getEmail: %s", user_bio.getEmail()));
 				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: user_bio.getIdToken: %s", user_bio.getIdToken()));
 				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: received IdToken: %s", idToken));
-				JSONObject jsonUserData = user_bio.toJSON();
-				getOauth2Token(jsonUserData);
 			}
+			sendFirebaseToken();
+			getOAuth2Token(user_bio.toJSON());
 		} else {
 			writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: idToken: %s", "FAILED"));
 			user_bio.clean();
@@ -1258,7 +1306,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (dnow.getTime() >= (long) activityListMap.get(run_id)) {
 					if (!activityInfoMap.containsKey(run_id)) {
 						if (!json_run_info.isNull("calories_distance")) {
-							run_info.writeJSON(json_run_info);
+							run_info = run_info.fromJSON(json_run_info);
 							activityInfoMap.put(run_id, run_info);
 							activityListMap.put(run_id, dnow.getTime() * 2); //unix time now x 2
 							user_bio.setTotal_runs(activityInfoMap.size());
@@ -1374,7 +1422,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					case auth_user:
 						if (bUserAlreadyCreated && bUserStatusReady) {
 							user_bio.fromJSON(dbEx.getJson_data_out());
-							mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric")==0);
+							mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
 							writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
 							getRunData(!isUpdated);
 							updateUI();

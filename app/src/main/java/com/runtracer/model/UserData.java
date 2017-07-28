@@ -1,10 +1,7 @@
-package com.runtracer;
-
+package com.runtracer.model;
 import android.util.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
@@ -12,7 +9,6 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -34,6 +30,8 @@ public class UserData implements Serializable {
 	private final int RESTING_HR_MAX = 100;
 
 	private String full_name;
+	private String first_name;
+	private String last_name;
 	private String birthday;
 	private String gender;
 	private String height;
@@ -94,7 +92,7 @@ public class UserData implements Serializable {
 	private double total_calories = 0;
 	private int no_runs = 0;
 	private String uid;
-	private int uid_v = 0;
+	private long uid_v = 0;
 	private String session_id;
 	private int total_runs = 0;
 	private final int minimum_age = 18;
@@ -104,9 +102,29 @@ public class UserData implements Serializable {
 	public UserData() {
 	}
 
-	int getValues() {
-		if (this.uid_v <= 0) {
-			return -1;
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password=password;
+	}
+
+	public int getValues() {
+		if (this.first_name != null && this.last_name != null && this.first_name.length() > 4 && this.last_name.length() > 4) {
+			this.full_name = this.first_name + " " + this.last_name;
+		} else {
+			if (this.full_name != null && this.full_name.length() > 8) {
+				String[] names = this.full_name.split(" ");
+				int lastIndex = names.length;
+				if (names[0] != null && this.first_name == null) {
+					this.first_name = names[0];
+				}
+				if (names[lastIndex - 1] != null && this.last_name == null) {
+					this.last_name = names[lastIndex - 1];
+				}
+			}
 		}
 		this.total_distance_miles = this.total_distance_km * this.conv_km_miles;
 		if (this.current_weight == null || this.current_weight.compareTo("") == 0 ||
@@ -116,7 +134,6 @@ public class UserData implements Serializable {
 			this.target_weight == null || this.target_weight.compareTo("") == 0 ||
 			this.target_fat == null || this.target_fat.compareTo("") == 0 ||
 			this.gender == null || this.gender.compareTo("") == 0 ||
-			this.full_name == null || this.full_name.compareTo("") == 0 ||
 			this.email == null || this.email.compareTo("") == 0) {
 			return (-1);
 		}
@@ -241,12 +258,14 @@ public class UserData implements Serializable {
 		return 0;
 	}
 
-	JSONObject createJSON() {
+	private JSONObject createJSON() {
 		JSONObject jsonuserdata = null;
 		try {
 			jsonuserdata = new JSONObject("{\"key\":\"data\"}");
 			jsonuserdata.put("uid_v", this.getUid_v());
 			jsonuserdata.put("full_name", this.getFull_name());
+			jsonuserdata.put("first_name", this.getFirst_name());
+			jsonuserdata.put("last_name", this.getLast_name());
 			jsonuserdata.put("email", this.getEmail());
 			jsonuserdata.put("password", this.getPassword());
 			jsonuserdata.put("id_token", this.getIdToken());
@@ -286,41 +305,53 @@ public class UserData implements Serializable {
 			} else {
 				returnval = -2;
 			}
+			if (!jsonuserdata.isNull("first_name") && jsonuserdata.get("first_name") instanceof String) {
+				this.first_name = jsonuserdata.getString("first_name");
+				writeLog(String.format("UserData: writeJSON: received: this.first_name: %s", this.first_name));
+			} else {
+				returnval = -3;
+			}
+			if (!jsonuserdata.isNull("last_name") && jsonuserdata.get("last_name") instanceof String) {
+				this.last_name = jsonuserdata.getString("last_name");
+				writeLog(String.format("UserData: writeJSON: received: this.last_name: %s", this.last_name));
+			} else {
+				returnval = -4;
+			}
 			if (!jsonuserdata.isNull("email") && jsonuserdata.get("email") instanceof String) {
 				this.email = jsonuserdata.getString("email");
 				writeLog(String.format("UserData: writeJSON: received: this.email: %s", this.email));
 			} else {
-				returnval = -3;
+				returnval = -5;
 			}
 			if (!jsonuserdata.isNull("password") && jsonuserdata.get("password") instanceof String) {
 				this.password = jsonuserdata.getString("password");
 				writeLog(String.format("UserData: writeJSON: received: this.password: %s", this.password));
 			} else {
-				returnval = -4;
+				returnval = -6;
 			}
 			if (!jsonuserdata.isNull("id_token") && jsonuserdata.get("id_token") instanceof String) {
 				this.idToken = jsonuserdata.getString("id_token");
 				writeLog(String.format("UserData: writeJSON: received: this.idToken: %s", this.idToken));
 			} else {
-				returnval = -5;
+				returnval = -7;
 			}
 			if (!jsonuserdata.isNull("birthday") && jsonuserdata.get("birthday") instanceof String) {
 				this.birthday = jsonuserdata.getString("birthday");
 				this.birthday_date = date_format.parse(this.birthday);
 			} else {
-				returnval = -6;
+				returnval = -8;
 			}
 			if (!jsonuserdata.isNull("gender")) {
 				this.gender = jsonuserdata.get("gender").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.gender));
 			} else {
-				returnval = -7;
+				returnval = -9;
 			}
 			if (!jsonuserdata.isNull("metric")) {
-				this.metric= jsonuserdata.get("metric").toString();
+				this.metric = jsonuserdata.get("metric").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.metric));
 			} else {
-				returnval = -8;
+				returnval = -10;
 			}
 			if (!jsonuserdata.isNull("height_v")) {
 				if (jsonuserdata.get("height_v") instanceof Double) {
@@ -338,7 +369,7 @@ public class UserData implements Serializable {
 					}
 				}
 			} else {
-				returnval = -9;
+				returnval = -11;
 			}
 			if (!jsonuserdata.isNull("hip_circumference_v")) {
 				if (jsonuserdata.get("hip_circumference_v") instanceof Double) {
@@ -356,7 +387,7 @@ public class UserData implements Serializable {
 					}
 				}
 			} else {
-				returnval = -10;
+				returnval = -12;
 			}
 			if (!jsonuserdata.isNull("current_weight_v")) {
 				if (jsonuserdata.get("current_weight_v") instanceof Double) {
@@ -374,7 +405,7 @@ public class UserData implements Serializable {
 					}
 				}
 			} else {
-				returnval = -11;
+				returnval = -13;
 			}
 			if (!jsonuserdata.isNull("current_fat_v")) {
 				if (jsonuserdata.get("current_fat_v") instanceof Double) {
@@ -392,7 +423,7 @@ public class UserData implements Serializable {
 					}
 				}
 			} else {
-				returnval = -12;
+				returnval = -14;
 			}
 			if (!jsonuserdata.isNull("target_weight_v")) {
 				if (jsonuserdata.get("target_weight_v") instanceof Double) {
@@ -410,7 +441,7 @@ public class UserData implements Serializable {
 					}
 				}
 			} else {
-				returnval = -13;
+				returnval = -15;
 			}
 			if (!jsonuserdata.isNull("target_fat_v")) {
 				if (jsonuserdata.get("target_fat_v") instanceof Double) {
@@ -428,7 +459,7 @@ public class UserData implements Serializable {
 					}
 				}
 			} else {
-				returnval = -14;
+				returnval = -16;
 			}
 			if (!jsonuserdata.isNull("resting_heart_rate")) {
 				if (jsonuserdata.get("resting_heart_rate") instanceof String) {
@@ -440,7 +471,7 @@ public class UserData implements Serializable {
 				}
 				writeLog(String.format(Locale.US, "UserData: writeJSON: resting_heart_rate: %.2f", this.resting_hr));
 			} else {
-				returnval = -16;
+				returnval = -17;
 			}
 			if (!jsonuserdata.isNull("recovery_heart_rate")) {
 				if (jsonuserdata.get("recovery_heart_rate") instanceof String) {
@@ -452,7 +483,7 @@ public class UserData implements Serializable {
 				}
 				writeLog(String.format(Locale.US, "UserData: writeJSON: recovery_hr: %.2f", this.recovery_hr));
 			} else {
-				returnval = -17;
+				returnval = -18;
 			}
 			if (!jsonuserdata.isNull("created")) {
 				this.created_at = jsonuserdata.get("created").toString();
@@ -474,6 +505,7 @@ public class UserData implements Serializable {
 	}
 
 	public JSONObject toJSON() {
+		this.getValues();
 		return (this.createJSON());
 	}
 

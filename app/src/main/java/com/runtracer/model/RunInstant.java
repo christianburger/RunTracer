@@ -1,4 +1,4 @@
-package com.runtracer;
+package com.runtracer.model;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -18,7 +18,7 @@ public class RunInstant implements Serializable {
 	public double latitude;
 	public double altitude;
 
-	RunInstant() {
+	public RunInstant() {
 		current_time= new Date().getTime();
 		this.current_motion_speed_km_h_v = 0.0;
 		this.current_motion_distance_km_v = 0.0;

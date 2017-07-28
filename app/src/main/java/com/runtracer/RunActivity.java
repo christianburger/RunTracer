@@ -49,6 +49,8 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.runtracer.model.RunData;
+import com.runtracer.model.UserData;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.sqlitedb.SqliteHandler;
 
@@ -734,7 +736,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				this.altitude = location.getAltitude();
 			}
 			if (location.hasSpeed()) {
-				this.gps_speed = location.getSpeed() * run_data.conv_m_s_km_h;
+				this.gps_speed = location.getSpeed() * run_data.getConv_m_s_km_h();
 			} else {
 				this.gps_speed = 0;
 			}
@@ -890,7 +892,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				if ((time_now - time_end) > time_threshold) {
 					time_difference = time_now - time_end;
 					run_data.setCurrent_speed_m_s_v((avg_distance / time_difference) * 1000);
-					run_data.setCurrent_speed_km_h_v(run_data.getCurrent_speed_m_s_v() * run_data.conv_m_s_km_h);
+					run_data.setCurrent_speed_km_h_v(run_data.getCurrent_speed_m_s_v() * run_data.getConv_m_s_km_h());
 				}
 
 				if (accelerometer_value > threshold_begin) {
@@ -913,7 +915,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 					if (((time_end - time_start) < time_diff_max) && ((time_end - time_start) > time_diff_min)) {
 						time_difference = time_end - time_start;
 						run_data.setCurrent_speed_m_s_v((avg_distance / time_difference) * 1000);
-						run_data.setCurrent_speed_km_h_v(run_data.getCurrent_speed_m_s_v() * run_data.conv_m_s_km_h);
+						run_data.setCurrent_speed_km_h_v(run_data.getCurrent_speed_m_s_v() * run_data.getConv_m_s_km_h());
 						run_data.setDistance_m_v(run_data.getDistance_m_v() + avg_distance);
 						run_data.setDistance_km_v(run_data.getDistance_m_v() / 1000);
 					}
