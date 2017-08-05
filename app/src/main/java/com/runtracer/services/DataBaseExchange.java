@@ -31,6 +31,7 @@ public class DataBaseExchange implements Serializable, Cloneable {
 	private String method;
 	private JSONObject json_data_in;
 	private JSONObject json_data_out;
+	private SimpleOAuth2Token simpleOAuth2Token;
 	private int maxAttempts;
 	private int attemptNo;
 	private int error_no=0;

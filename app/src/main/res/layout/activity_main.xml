@@ -559,8 +559,8 @@
 				android:layout_column="0"
 				android:layout_marginBottom="4sp"
 				android:text="@string/user_unit_system_value"
-				android:textOff="@string/metric"
-				android:textOn="@string/imperial"/>
+				android:textOff="@string/user_unit_system_imperial"
+				android:textOn="@string/user_unit_system_metric"/>
 		</TableRow>
 	</TableLayout>
 

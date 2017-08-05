@@ -19,10 +19,10 @@ import lombok.ToString;
 @Getter
 @Setter
 public class UserData implements Serializable {
-	private static final long serialVersionUID = 100L;
-	private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
-	private static final SimpleDateFormat local_format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.getDefault());
-	private static final String TAG = "user_data";
+	private final long serialVersionUID = 100L;
+	private final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
+	private final SimpleDateFormat local_format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.getDefault());
+	private final String TAG = "user_data";
 
 	private final int RESTING_NO_READINGS = 20;
 	private final int RESTING_HR_MARGIN = 5;
@@ -43,6 +43,7 @@ public class UserData implements Serializable {
 	private String email;
 	private String password;
 	private String metric;
+	private String uid;
 	private String idToken;
 	private String status;
 	private String created;
@@ -91,7 +92,6 @@ public class UserData implements Serializable {
 	private double total_distance_miles = 0;
 	private double total_calories = 0;
 	private int no_runs = 0;
-	private String uid;
 	private long uid_v = 0;
 	private String session_id;
 	private int total_runs = 0;
@@ -263,6 +263,7 @@ public class UserData implements Serializable {
 		try {
 			jsonuserdata = new JSONObject("{\"key\":\"data\"}");
 			jsonuserdata.put("uid_v", this.getUid_v());
+			jsonuserdata.put ("uid", this.getUid ());
 			jsonuserdata.put("full_name", this.getFull_name());
 			jsonuserdata.put("first_name", this.getFirst_name());
 			jsonuserdata.put("last_name", this.getLast_name());
@@ -296,6 +297,12 @@ public class UserData implements Serializable {
 			if (!jsonuserdata.isNull("uid_v")) {
 				this.uid_v = jsonuserdata.getInt("uid_v");
 				writeLog(String.format(Locale.US, "UserData: writeJSON: received: this.uid_v: %d", this.uid_v));
+			} else {
+				returnval = -1;
+			}
+			if (!jsonuserdata.isNull("uid") && jsonuserdata.get("uid") instanceof String) {
+				this.uid= jsonuserdata.getString("uid");
+				writeLog (String.format (Locale.US, "UserData: writeJSON: received: this.uid: %s", this.uid));
 			} else {
 				returnval = -1;
 			}
@@ -515,9 +522,10 @@ public class UserData implements Serializable {
 		Log.e(TAG, date + ": " + msg);
 	}
 
-	private void writeObject(java.io.ObjectOutputStream out)
-		throws IOException {
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
 		out.writeObject(this.full_name);
+		out.writeObject(this.first_name);
+		out.writeObject(this.last_name);
 		out.writeObject(this.birthday);
 		out.writeObject(this.gender);
 		out.writeObject(this.height);
@@ -527,6 +535,10 @@ public class UserData implements Serializable {
 		out.writeObject(this.target_weight);
 		out.writeObject(this.target_fat);
 		out.writeObject(this.email);
+		out.writeObject(this.password);
+		out.writeObject(this.metric);
+		out.writeObject(this.uid);
+		out.writeObject(this.idToken);
 		out.writeObject(this.status);
 		out.writeObject(this.created);
 		out.writeObject(this.created_at);
@@ -569,17 +581,16 @@ public class UserData implements Serializable {
 		out.writeObject(this.total_calories);
 		out.writeObject(this.no_runs);
 
-		out.writeObject(this.uid);
 		out.writeObject(this.uid_v);
 		out.writeObject(this.session_id);
 		out.writeObject(this.total_runs);
 		out.writeObject(this.created_v);
 	}
 
-	private void readObject(java.io.ObjectInputStream in)
-		throws IOException, ClassNotFoundException {
-		// populate the fields of 'this' from the data in 'in'...
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
 		this.full_name = (String) in.readObject();
+		this.first_name= (String) in.readObject();
+		this.last_name= (String) in.readObject();
 		this.birthday = (String) in.readObject();
 		this.gender = (String) in.readObject();
 		this.height = (String) in.readObject();
@@ -589,6 +600,10 @@ public class UserData implements Serializable {
 		this.target_weight = (String) in.readObject();
 		this.target_fat = (String) in.readObject();
 		this.email = (String) in.readObject();
+		this.password= (String) in.readObject();
+		this.metric= (String) in.readObject();
+		this.uid = (String) in.readObject();
+		this.idToken= (String) in.readObject();
 		this.status = (String) in.readObject();
 		this.created = (String) in.readObject();
 		this.created_at = (String) in.readObject();
@@ -631,8 +646,7 @@ public class UserData implements Serializable {
 		this.total_calories = (double) in.readObject();
 		this.no_runs = (int) in.readObject();
 
-		this.uid = (String) in.readObject();
-		this.uid_v = (int) in.readObject();
+		this.uid_v = (long) in.readObject();
 		this.session_id = (String) in.readObject();
 		this.total_runs = (int) in.readObject();
 		this.created_v = (Date) in.readObject();

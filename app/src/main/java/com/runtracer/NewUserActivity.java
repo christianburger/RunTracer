@@ -23,6 +23,7 @@ import android.widget.Toast;
 
 import com.runtracer.interfaces.OnDateSetListener;
 import com.runtracer.model.UserData;
+import com.runtracer.utilities.TypeCheck;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -30,8 +31,6 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static android.view.View.OnClickListener;
 import static android.view.View.OnTouchListener;
@@ -49,6 +48,8 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 	Button mUserDateofBirth;
 
 	Switch mUserGender;
+	Switch mUnitSystem;
+
 	EditText mFullName;
 	EditText mUserEmail;
 	EditText mUserPassword;
@@ -140,6 +141,10 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		mUserGender.setOnClickListener(this);
 		mUserHeight = (EditText) findViewById(R.id.user_height);
 
+		mUnitSystem= (Switch) findViewById(R.id.user_unit_system);
+		mUnitSystem.setChecked(retrievedMetricSystem.compareToIgnoreCase("metric")==0);
+		mUnitSystem.setOnClickListener(this);
+
 		mUserHeightUnits = (TextView) findViewById(R.id.height_units);
 		mUserWeightUnits = (TextView) findViewById(R.id.weight_units);
 		mUserWeightTargetUnits = (TextView) findViewById(R.id.weight_unit_target);
@@ -182,29 +187,21 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		mUserPassword.setOnTouchListener(this);
 		mUserEmail.setText(retrievedEmail);
 		mUserGender.setText(retrievedGender);
+		mUnitSystem.setText(retrievedMetricSystem);
 
 		if (retrievedMetricSystem.compareToIgnoreCase("metric")==0) {
 			mUserHeightUnits.setText(R.string.unit_cm);
 			mUserWeightUnits.setText(R.string.unit_kg);
 			mUserWeightTargetUnits.setText(R.string.unit_kg);
 			mUserHipCircumferenceUnits.setText(R.string.unit_cm);
+			mUnitSystem.setChecked(true);
 		} else {
 			mUserHeightUnits.setText(R.string.unit_ft);
 			mUserWeightUnits.setText(R.string.unit_lb);
 			mUserWeightTargetUnits.setText(R.string.unit_lb);
 			mUserHipCircumferenceUnits.setText(R.string.unit_inches);
+			mUnitSystem.setChecked(false);
 		}
-	}
-
-	public boolean isNumber(String str) {
-		int size = str.length();
-		for (int i = 0; i < size; i++) {
-			Character cchar = str.charAt(i);
-			if (!Character.isDigit(cchar) && (cchar != '.') && (cchar != ',')) {
-				return false;
-			}
-		}
-		return size > 0;
 	}
 
 	boolean calculateBMI() throws ParseException {
@@ -347,20 +344,6 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		return super.onOptionsItemSelected(item);
 	}
 
-	public boolean isEmailValid(String email) {
-		String regExpn = "^(([\\w-]+\\.)+[\\w-]+|([a-zA-Z]{1}|[\\w-]{2,}))@"
-			+ "((([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
-			+ "[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\."
-			+ "([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
-			+ "[0-9]{1,2}|25[0-5]|2[0-4][0-9])){1}|"
-			+ "([a-zA-Z]+[\\w-]+\\.)+[a-zA-Z]{2,4})$";
-
-		Pattern pattern = Pattern.compile(regExpn, Pattern.CASE_INSENSITIVE);
-		Matcher matcher = pattern.matcher(email);
-
-		return matcher.matches();
-	}
-
 	private boolean isAgeValid() {
 		Date dateOfBirth = retrievedDateOfBirth;
 		Date dateOfToday = new Date();
@@ -399,7 +382,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 		boolean result = false;
 		try {
 			double weight_v = 0.0;
-			if (isNumber(weight)) {
+			if (TypeCheck.isNumber(weight)) {
 				weight_v = nf.parse(weight).doubleValue();
 			}
 			if (retrievedMetricSystem.compareToIgnoreCase("metric")==0) {
@@ -416,7 +399,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 	private boolean isFatValid(String fat) {
 		double fat_v = 0.0;
 		try {
-			if (isNumber(fat)) {
+			if (TypeCheck.isNumber(fat)) {
 				fat_v = nf.parse(fat).doubleValue();
 			}
 		} catch (ParseException e) {
@@ -428,7 +411,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 	private boolean isHeightValid(String height) throws ParseException {
 		writeLog(String.format(Locale.CANADA, "isHeightValid(%s), retrievedMetricSystem: %b", height, retrievedMetricSystem));
 		double height_v = 0.0;
-		if (isNumber(height)) {
+		if (TypeCheck.isNumber(height)) {
 			height_v = nf.parse(height).doubleValue();
 			writeLog(String.format(Locale.CANADA, "isHeightValid(...), height_v: %f", height_v));
 		}
@@ -441,7 +424,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 
 	private boolean isHipCircumferenceValid(String hip_circumference) throws ParseException {
 		double hip_circumference_v = 0.0;
-		if (isNumber(hip_circumference)) {
+		if (TypeCheck.isNumber(hip_circumference)) {
 			hip_circumference_v = nf.parse(hip_circumference).doubleValue();
 		}
 		if (retrievedMetricSystem.compareToIgnoreCase("metric")==0) {
@@ -464,6 +447,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 			retrievedEmail = String.valueOf(mUserEmail.getText());
 			retrievedPassword = String.valueOf(mUserPassword.getText());
 			retrievedGender = String.valueOf(mUserGender.isChecked() ? "female" : "male");
+			retrievedMetricSystem= String.valueOf(mUnitSystem.isChecked() ? "metric" : "imperial");
 			if (retrievedDateOfBirth != null) {
 				retrievedDOB = (date_format.format(retrievedDateOfBirth));
 			}
@@ -531,7 +515,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 					Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 					return false;
 				}
-				if (!isEmailValid(retrievedEmail)) {
+				if (!TypeCheck.isEmailValid(retrievedEmail)) {
 					String errorString = "email is invalid: " + retrievedEmail;
 					Toast.makeText(this, errorString, Toast.LENGTH_SHORT).show();
 					return false;
@@ -561,6 +545,7 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 				userData.setEmail(retrievedEmail);
 				userData.setPassword(retrievedPassword);
 				userData.setGender(mUserGender.isChecked() ? "female" : "male");
+				userData.setMetric(mUnitSystem.isChecked() ? "metric" : "imperial");
 				userData.setBirthday_date(retrievedDateOfBirth);
 				userData.setCurrent_fat_v(lretrievedFat_v);
 				userData.setTarget_fat_v(lretrievedTargetFat_v);
@@ -596,6 +581,17 @@ public class NewUserActivity extends AppCompatActivity implements OnDateSetListe
 				} else {
 					mUserGender.setText(R.string.st_female);
 					retrievedGender = "female";
+				}
+				break;
+
+
+			case R.id.user_unit_system:
+				if (!mUnitSystem.isChecked()) {
+					mUnitSystem.setText(R.string.user_unit_system_metric);
+					retrievedMetricSystem= "metric";
+				} else {
+					mUnitSystem.setText(R.string.user_unit_system_imperial);
+					retrievedMetricSystem= "imperial";
 				}
 				break;
 

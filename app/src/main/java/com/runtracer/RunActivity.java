@@ -50,10 +50,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.runtracer.model.RunData;
+import com.runtracer.model.RunInstant;
 import com.runtracer.model.UserData;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.sqlitedb.SqliteHandler;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -63,7 +68,7 @@ import java.util.Locale;
 
 public class RunActivity extends Activity implements View.OnClickListener, SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>, View.OnLongClickListener, LocationListener {
 
-	private SqliteHandler sqlLiteHandler;
+	private SqliteHandler sqliteHandler;
 	private static final int REQUEST_PERMISSIONS = 1334;
 	private static final String[] permissions = {
 		Manifest.permission.ACCESS_FINE_LOCATION,
@@ -208,12 +213,16 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		writeLog("onCreate(), starting now...");
-
-		sqlLiteHandler = new SqliteHandler(RunActivity.this);
-		this.sqlLiteHandler.getReadableDatabase();
-
 		requestPermissions(permissions, REQUEST_PERMISSIONS);
+		writeLog("onCreate(), starting now...");
+		sqliteHandler = MainActivity.sqliteHandler;
+		this.sqliteHandler.getReadableDatabase();
+		if (this.sqliteHandler.checkDataBase()) {
+			ArrayList<String> result = this.sqliteHandler.getAllRunSummaries(SqliteHandler.field_date_start);
+			for (String key:result) {
+				writeLog(String.format(Locale.CANADA,"RunActivity: onCreate: checking sqlite: key: %s", key));
+			}
+		}
 		accelerometer_vector = new Vector();
 		writeLog("onCreate() step 01 ...");
 		setContentView(R.layout.activity_run);
@@ -225,6 +234,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 		writeLog("onCreate(), new RunData()...");
 		run_data = new RunData();
 		writeLog("onCreate(), after new RunData()...");
+		run_data.setRun_id_v(new Date().getTime());
 		run_data.setCalories_v_distance(0.0);
 		run_data.setCalories_v_heart_beat(0.0);
 		run_data.setDistance_km_v(0.0);
@@ -320,7 +330,13 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	}
 
 	private boolean storeRunData(RunData runData) {
-		sqlLiteHandler.addRunSummary(runData.toJSON());
+		JSONObject runinfo= run_data.toJSON();
+		try {
+			runinfo.put("uid", user_bio.getUid());
+			sqliteHandler.addRunSummary(runinfo);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		return true;
 	}
 
@@ -970,7 +986,22 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 
 				double usedMemoryPercentage = 100 * (double) availableMemory() / (double) totalMemory();
 				if (usedMemoryPercentage < 80) {
-					run_data.pushInstant(run_data.getAverage_speed_km_h_v(), avg_distance, this.gps_speed, run_data.getGps_distance_km(), run_data.getCalories_v_distance(), run_data.getCalories_v_heart_beat(), run_data.getCurrent_heart_rate(), this.longitude, this.latitude, this.altitude);
+					RunInstant runInstant= new RunInstant();
+					runInstant.setUid(user_bio.getUid());
+					runInstant.setRun_id_v(run_data.getRun_id_v());
+					runInstant.setCtime(new Date().getTime());
+					runInstant.setCurrent_motion_speed_km_h_v(run_data.getAverage_speed_km_h_v());
+					runInstant.setCurrent_motion_distance_km_v(avg_distance);
+					runInstant.setCurrent_gps_speed_km_h(this.gps_speed);
+					runInstant.setCurrent_gps_distance_km(run_data.getGps_distance_km());
+					runInstant.setCalories_v_distance(run_data.getCalories_v_distance());
+					runInstant.setCalories_v_heart_beat(run_data.getCalories_v_heart_beat());
+					runInstant.setCurrent_heart_rate(run_data.getCurrent_heart_rate());
+					runInstant.setLongitude(this.longitude);
+					runInstant.setLatitude(this.latitude);
+					runInstant.setAltitude(this.altitude);
+					writeLog(String.format(Locale.CANADA,"RunActivity: ADDING RunInstant.getCurrentTime(): %d", runInstant.getCtime()));
+					sqliteHandler.addRunInstant(runInstant.toJSON());
 				} else {
 					writeLog("RunActivity: ERROR: MEMORY USE ABOVE 80%.");
 				}

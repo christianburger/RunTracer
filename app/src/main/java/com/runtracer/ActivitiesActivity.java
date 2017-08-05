@@ -1,5 +1,5 @@
 package com.runtracer;
-
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -17,34 +17,37 @@ import android.widget.ExpandableListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.firebase.appindexing.Action;
+import com.google.firebase.appindexing.FirebaseUserActions;
+import com.google.firebase.appindexing.builders.Actions;
 import com.runtracer.model.RunData;
 import com.runtracer.model.UserData;
+import com.runtracer.sqlitedb.SqliteHandler;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
 public class ActivitiesActivity extends AppCompatActivity implements View.OnClickListener {
-
-	private static final String TAG = "runtracer";
+	private static final String TAG = "activities";
 	private static final int SHOW_CHART = 1001;
 
-	//GUI elements
 	FloatingActionButton mEmail;
 	FloatingActionButton mShowChart;
 
 	private ExpandableListView mActivitiesList;
 	private ExpandableListAdapter mActivityListAdapter;
 	private Toolbar mToolbar;
-
 	private TextView mActivitySummary;
+
+	private Long selected_run_id;
 
 	List<String> listDataHeader;
 	HashMap<String, List<String>> listDataChild;
@@ -52,43 +55,34 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 	private HashMap activityInfoMap;
 	private HashMap filteredActivityInfoMap;
-	/**
-	 * ATTENTION: This was auto-generated to implement the App Indexing API.
-	 * See https://g.co/AppIndexing/AndroidStudio for more information.
-	 */
-	private GoogleApiClient client;
-	private Long selected_run_id;
+
 	private UserData user_data;
+
+	private SqliteHandler sqliteHandler;
+
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_activities);
-
+		sqliteHandler= MainActivity.sqliteHandler;
+		writeLog(String.format("ActivitiesActivity: onCreate(): sqlite size: %s", sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid).size()));
 		mEmail = (FloatingActionButton) findViewById(R.id.fab);
 		mEmail.setOnClickListener(this);
-
 		mShowChart = (FloatingActionButton) findViewById(R.id.fab_show_chart);
 		mShowChart.setOnClickListener(this);
-
 		mToolbar = (Toolbar) findViewById(R.id.toolbar);
 		mToolbar.setTitle("Activity Details");
-
 		setSupportActionBar(mToolbar);
-
-		activityInfoMap = new HashMap<Long, RunData>();
-		filteredActivityInfoMap = new HashMap<Long, RunData>();
-		activityInfoMap = (HashMap) getIntent().getSerializableExtra("RunInfo");
-		user_data = (UserData) getIntent().getSerializableExtra("UserData");
+		activityInfoMap = new HashMap<>();
+		filteredActivityInfoMap = new HashMap<>();
+		user_data = MainActivity.user_bio;
 		listDataChildToRunIdCorrelation = new HashMap<>();
-
 		getActivities();
-
 		mActivitySummary = (TextView) findViewById(R.id.activity_summary);
 		mActivityListAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
 		mActivitiesList = (ExpandableListView) findViewById(R.id.activities_list1);
 		prepareListData();
-
 		mActivityListAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
 		mActivitiesList.setAdapter(mActivityListAdapter);
 		mActivitiesList.setOnGroupClickListener(new ExpandableListView.OnGroupClickListener() {
@@ -98,7 +92,6 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				return false;
 			}
 		});
-
 		// Listview Group expanded listener
 		mActivitiesList.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
 
@@ -113,21 +106,17 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				//Toast.makeText(getApplicationContext(), listDataHeader.get(groupPosition) + " Collapsed", Toast.LENGTH_SHORT).show();
 			}
 		});
-
 		mActivitiesList.setOnChildClickListener(new ExpandableListView.OnChildClickListener() {
 			@Override
 			public boolean onChildClick(ExpandableListView parent, View v, int groupPosition, int childPosition, long id) {
 				//Toast.makeText(getApplicationContext(), listDataHeader.get(groupPosition) + " : " + listDataChild.get(listDataHeader.get(groupPosition)).get(childPosition), Toast.LENGTH_SHORT).show();
 				//showActivity(listDataChild.get(listDataHeader.get(groupPosition)).get(childPosition));
-				showActivity(childPosition);
+				showActivity((long)childPosition);
 				return false;
 			}
 		});
-		// ATTENTION: This was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		client = new GoogleApiClient.Builder(this).build();
-
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+		updateStats();
 	}
 
 	public ActivitiesActivity() {
@@ -151,7 +140,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		return val.intValue();
 	}
 
-	public boolean showActivity(int childposition) {
+	public boolean showActivity(long childposition) {
 		writeLog(String.format(Locale.US, "showActivity: received: %d", childposition));
 		if (!listDataChildToRunIdCorrelation.isEmpty() && listDataChildToRunIdCorrelation.containsKey(childposition) ) {
 			writeLog(String.format(Locale.US, "showActivity: before this.selected_run_id: %d", this.selected_run_id));
@@ -178,26 +167,42 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	}
 
 	public void writeLog(String msg) {
-		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new java.util.Date()).toString());
+		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", new Date()).toString());
 		Log.e(TAG, date + ": " + msg);
 	}
 
 	public int getActivities() {
-		List keys = (List<Long>) new ArrayList(activityInfoMap.keySet());
-		Integer ckey;
+		activityInfoMap= new HashMap();
+		writeLog("getActivities: activityInfoMap.size(): "+ activityInfoMap.size());
+		if (sqliteHandler!=null) {
+			ArrayList<String> dataset = sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid);
+			writeLog(String.format("getActivities: dataset: %s", dataset));
+			for (int i=0; i<dataset.size(); i++) {
+				String runid=dataset.get(i);
+				long runid_v= Long.parseLong(runid);
+				writeLog(String.format(Locale.CANADA, "getActivities: runid: %s     runid_v: %d      i: %d", runid, runid_v, i));
+				RunData runData = sqliteHandler.getRunData(runid_v);
+				writeLog(String.format(Locale.CANADA, "getActivities: runData: : %s", runData));
+				if (runData!=null && runData.getRun_id_v() ==  runid_v) {
+					activityInfoMap.put(runid_v, runData);
+					writeLog(String.format(Locale.CANADA, "getActivities: ADDING to activityInfoMap.put(runid_v: %d, runData: %s", runid_v, runData));
+				}
+			}
+		}
 
+
+		List keys = (List<Long>) new ArrayList(activityInfoMap.keySet());
+		long ckey;
 		RunData lruninfo;
 		Iterator itk = keys.iterator();
-
 		for (; itk.hasNext(); ) {
-			ckey = (Integer) itk.next();
+			ckey = (Long)itk.next();
 			writeLog(String.format(Locale.US, "activityInfoMap: ckey: %d", ckey));
-			lruninfo = (RunData) activityInfoMap.get(ckey);
+			lruninfo= sqliteHandler.getRunData(ckey);
 			writeLog(String.format("activityInfoMap: run_date_start: %s", lruninfo.getRun_date_start()));
 			writeLog(String.format("activityInfoMap: run_id: %s", lruninfo.getRun_id_v()));
 			writeLog(String.format("activityInfoMap: calories: %s", lruninfo.getCalories_v_distance()));
-
-			if ((lruninfo.getRun_id_v()> 0)) {
+			if (lruninfo.getRun_id_v()> 0) {
 				/*
 				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 				lruninfo.run_date_start_v= new Date();
@@ -220,10 +225,10 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 
 		Collections.sort(keys);
-		Integer ckey;
+		long ckey;
 
-		listDataHeader = new ArrayList<String>();
-		listDataChild = new HashMap<String, List<String>>();
+		listDataHeader = new ArrayList<>();
+		listDataChild = new HashMap<>();
 
 		// Adding child data
 		listDataHeader.add("This Month");
@@ -231,14 +236,14 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		listDataHeader.add("All Activity..");
 
 		// Adding child data
-		List<String> thisMonth = new ArrayList<String>();
-		List<String> lastMonth = new ArrayList<String>();
-		List<String> allActivity = new ArrayList<String>();
+		List<String> thisMonth = new ArrayList<>();
+		List<String> lastMonth = new ArrayList<>();
+		List<String> allActivity = new ArrayList<>();
 
 		RunData lruninfo;
 		Iterator itv = keys.iterator();
 		for (; itv.hasNext(); ) {
-			ckey = (Integer) itv.next();
+			ckey = (long) itv.next();
 			writeLog(String.format(Locale.US, "ckey: %d", ckey));
 			if (filteredActivityInfoMap.containsKey(ckey)) {
 				lruninfo = (RunData) filteredActivityInfoMap.get(ckey);
@@ -246,7 +251,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				if ((lruninfo.getRun_id_v()> 0)) {
 					String data_info = getActivityInfo(lruninfo.getRun_id_v());
 					allActivity.add(data_info);
-					long pos = allActivity.indexOf(data_info);
+					long pos = (long)(allActivity.indexOf(data_info));
 					listDataChildToRunIdCorrelation.put(pos, lruninfo.getRun_id_v());
 					try {
 						Calendar cdate = Calendar.getInstance();
@@ -255,7 +260,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 						//if(lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
 						if (lruninfo.getRun_date_start_v().after(format.parse(thismonthcomparedate))) {
 							//thisMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
-							thisMonth.add(getActivityInfo(lruninfo.getRun_id_v()));
+							thisMonth.add(getActivityInfo((int)lruninfo.getRun_id_v()));
 						}
 						if (lruninfo.getRun_date_start_v().after(format.parse(lastmonthcomparedate)) && lruninfo.getRun_date_start_v().before(format.parse(thismonthcomparedate))) {
 							//lastMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
@@ -274,19 +279,40 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		listDataChild.put(listDataHeader.get(2), allActivity);
 	}
 
+	private void updateStats() {
+		try {
+			ArrayList<String> results;
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_uid);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_runid);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_ctime);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_current_motion_speed_km_h_v);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_current_motion_distance_km_v);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_current_gps_speed_km_h);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_current_gps_distance_km);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_calories_v_distance);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_calories_v_heart_beat);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_current_heart_rate);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_longitude);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_latitude);
+			results = sqliteHandler.getAllRunInstants(SqliteHandler.field_altitude);
+		} catch (NumberFormatException e) {
+			writeLog("MainActivity: updateStats(): NUMBER FORMAT EXCEPTION: " + e.toString());
+		}
+	}
+
 	@Override
 	public void onStart() {
 		super.onStart();
-
 		// ATTENTION: This was auto-generated to implement the App Indexing API.
 		// See https://g.co/AppIndexing/AndroidStudio for more information.
-		client.connect();
+		FirebaseUserActions.getInstance().start(getIndexApiAction());
 	}
 
 	@Override
 	public void onStop() {
-		super.onStop();
-		client.disconnect();
+		super.onStop();// ATTENTION: This was auto-generated to implement the App Indexing API.
+// See https://g.co/AppIndexing/AndroidStudio for more information.
+		FirebaseUserActions.getInstance().end(getIndexApiAction());
 	}
 
 	protected int sendEmail() {
@@ -298,7 +324,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		i.putExtra(Intent.EXTRA_TEXT, "");
 		try {
 			startActivity(Intent.createChooser(i, "Send mail..."));
-		} catch (android.content.ActivityNotFoundException ex) {
+		} catch (ActivityNotFoundException ex) {
 			Toast.makeText(ActivitiesActivity.this, "There are no email clients installed.", Toast.LENGTH_SHORT).show();
 		}
 		return (0);
@@ -306,14 +332,12 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 	public void showRunChart() {
 		Intent intent = new Intent(this, RunChartActivity.class);
-		intent.putExtra("run_data", (RunData) activityInfoMap.get(this.selected_run_id));
-		intent.putExtra("user_data", user_data);
+		intent.putExtra("run_data", this.selected_run_id.toString());
 		startActivityForResult(intent, SHOW_CHART);
 	}
 
 	/**
 	 * Called when a view has been clicked.
-	 *
 	 * @param v The view that was clicked.
 	 */
 	@Override
@@ -329,6 +353,14 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 				Snackbar.make(v, "Sending email", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 				break;
 		}
+	}
+
+	/**
+	 * ATTENTION: This was auto-generated to implement the App Indexing API.
+	 * See https://g.co/AppIndexing/AndroidStudio for more information.
+	 */
+	public Action getIndexApiAction() {
+		return Actions.newView("Activities", "http://[ENTER-YOUR-URL-HERE]");
 	}
 
 	public class WebAppInterface {

@@ -53,40 +53,31 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.auth.GoogleAuthProvider;
-import com.runtracer.model.RunData;
 import com.runtracer.model.UserData;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.services.DataBaseExchange;
 import com.runtracer.services.ServerDataService;
 import com.runtracer.services.SimpleOAuth2Token;
 import com.runtracer.sqlitedb.SqliteHandler;
+import com.runtracer.utilities.PrintValue;
+import com.runtracer.utilities.TypeCheck;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Semaphore;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener, OnCompleteListener<GetTokenResult> {
 
-	private SqliteHandler sqlLiteHandler;
+	public static SqliteHandler sqliteHandler;
 
 	private static final boolean DEVELOPER_MODE = false;
 	public static final int minimum_age = 12;
@@ -101,21 +92,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public static UserData user_bio;
 	public static UserData newUser;
 
-	File userdatafile;
-	File runmapfile;
-	File runinfofile;
-
-	FileOutputStream f_out;
-
 	private BluetoothLeService mBluetoothLeService;
+	private String mDeviceAddress;
 
 	private FirebaseAuth mAuth;
 	private FirebaseAuth.AuthStateListener mAuthListener;
 	private FirebaseAnalytics mFirebaseAnalytics;
-
-	private String mDeviceAddress;
-	private HashMap activityListMap;
-	private HashMap activityInfoMap;
 
 	/* RequestCode for resolutions involving sign-in */
 	private static final int RC_SIGN_IN = 0;
@@ -134,8 +116,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int MEASURING = 1;          // RHR Measuring state
 	private static final int READY = 2;              // RHR Measuring state
 	private static final int ACQUIRED = 3;           // RHR Measuring state
-
-	private static final int NETWORK_TIMEOUT = 80000;
 
 	//method signature for response at onPostExecute
 	private static final int get_user_data = 1001;
@@ -181,8 +161,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private boolean mIsEmailSignedIn = false;
 	private boolean mIsAuthenticated = false;
 
-	private boolean isBluetoothLeRegistered;
-
 	private boolean isUpdated;
 	private SignInButton mGoogleSignIn;
 	private GoogleApiClient mGoogleApiClient;
@@ -190,6 +168,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private Button mEmailSignInButton;
 
 	public MainActivity() {
+	}
+
+	@Override
+	public PackageManager getPackageManager() {
+		return super.getPackageManager();
 	}
 
 	@Override
@@ -242,127 +225,26 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		user_bio.setStatus("0");
 		user_bio.setMetric("imperial");
 
-		sqlLiteHandler = new SqliteHandler(MainActivity.this);
+		try {
+			String path;
+			path = getPackageDirectory();
+			File sqlitedbfile = new File(path, "sqlitedbfile.user");
+			sqliteHandler = new SqliteHandler(MainActivity.this, sqlitedbfile.getAbsolutePath());
+		} catch (PackageManager.NameNotFoundException e) {
+			e.printStackTrace();
+		}
 
 		isUpdated = false;
 
-		activityListMap = new HashMap<>();
-		activityListMap.clear();
-
-		activityInfoMap = new HashMap<>();
-		activityInfoMap.clear();
 		local_registerReceiver();
 
 		this.setContentView(R.layout.activity_main);
 		this.setupGui();
-		this.readFile();
 		this.updateUI();
 
 		if (savedInstanceState != null) {
 			mIsResolving = savedInstanceState.getBoolean(KEY_IS_RESOLVING);
 		}
-	}
-
-	protected boolean writeFile() {
-		try {
-			user_bio.getValues();
-			String path = getPackageDirectory();
-			userdatafile = new File(path, "userdata.user");
-			f_out = new FileOutputStream(userdatafile.getAbsolutePath(), false);
-			ObjectOutputStream obj_out = new ObjectOutputStream(f_out);
-			obj_out.writeObject(user_bio);
-			writeLog(String.format(Locale.US, "saved file: %s", userdatafile.getAbsolutePath()));
-			f_out.close();
-
-			runmapfile = new File(path, "runmap.data");
-			f_out = new FileOutputStream(runmapfile.getAbsolutePath(), false);
-			ObjectOutputStream objmap_out = new ObjectOutputStream(f_out);
-			objmap_out.writeObject(activityListMap);
-			writeLog(String.format(Locale.US, "saved file: %s", runmapfile.getAbsolutePath()));
-			f_out.close();
-
-			runinfofile = new File(path, "runinfo.data");
-			f_out = new FileOutputStream(runinfofile.getAbsolutePath(), false);
-			ObjectOutputStream objinfo_out = new ObjectOutputStream(f_out);
-			objinfo_out.writeObject(activityInfoMap);
-			writeLog(String.format(Locale.US, "saved file: %s", runinfofile.getAbsolutePath()));
-			f_out.close();
-
-		} catch (IOException | PackageManager.NameNotFoundException e) {
-			writeLog(String.format(Locale.US, "writeFile(): Exception: %s", e.toString()));
-			e.printStackTrace();
-		}
-
-		return true;
-	}
-
-	protected boolean readFile() {
-		boolean userdata_ok = false;
-		boolean runmapdata_ok = false;
-		boolean runinfodata_ok = false;
-		try {
-			String path = getPackageDirectory();
-			userdatafile = new File(path, "userdata.user");
-			if (userdatafile.exists()) {
-				// Read from disk using FileInputStream
-				FileInputStream f_in = new FileInputStream(userdatafile.getAbsolutePath());
-				// Read object using ObjectInputStream
-				ObjectInputStream obj_in = new ObjectInputStream(f_in);
-				// Read an object
-				writeLog("File found, reading data now: ");
-				user_bio = (UserData) obj_in.readObject();
-				user_bio.getValues();
-				mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
-				userdata_ok = true;
-				f_in.close();
-			} else {
-				writeLog("File not found: ");
-			}
-
-			activityListMap.clear();
-			activityInfoMap.clear();
-
-			runmapfile = new File(path, "runmap.data");
-			if (runmapfile.exists()) {
-				writeLog("found runmapfile...");
-				FileInputStream f_in = new FileInputStream(runmapfile.getAbsolutePath());
-				// Read object using ObjectInputStream
-				ObjectInputStream obj_in = new ObjectInputStream(f_in);
-				// Read an object
-				activityListMap = (HashMap<Long, Long>) obj_in.readObject();
-				runmapdata_ok = true;
-				f_in.close();
-			} else {
-				writeLog("File not found: ");
-			}
-
-			runinfofile = new File(path, "runinfo.data");
-			if (runinfofile.exists()) {
-				writeLog("found runinfofile...");
-				FileInputStream f_in = new FileInputStream(runinfofile.getAbsolutePath());
-				// Read object using ObjectInputStream
-				ObjectInputStream obj_in = new ObjectInputStream(f_in);
-				// Read an object
-				activityInfoMap = (HashMap<Long, RunData>) obj_in.readObject();
-				runinfodata_ok = true;
-				f_in.close();
-			} else {
-				writeLog("File not found: ");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		if (userdata_ok && runmapdata_ok && runinfodata_ok) {
-			int mapsz = activityListMap.size();
-			int infosz = activityInfoMap.size();
-			writeLog(String.format(Locale.US, "readFile: checking basic file consistency: mapsz: %d, infosz: %d", mapsz, infosz));
-			if (mapsz > 0 && infosz > 0 && mapsz == infosz) {
-				writeLog("readFile(): isUpdated being set to true.");
-				isUpdated = true;
-			}
-		}
-		updateUI();
-		return true;
 	}
 
 	@Override
@@ -381,13 +263,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		changeUserData(json);
 	}
 
-	protected String getPackageDirectory() throws PackageManager.NameNotFoundException {
+	public String getPackageDirectory() throws PackageManager.NameNotFoundException {
 		String path;
 		PackageManager m = getPackageManager();
 		String s = getPackageName();
 		PackageInfo p = m.getPackageInfo(s, 0);
 		path = p.applicationInfo.dataDir;
-
 		return (path);
 	}
 
@@ -397,7 +278,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		JSONObject json = user_bio.toJSON();
 		writeLog(String.format(Locale.US, "onDestroy(): CALLING changeUserData: json: %s", json));
 		changeUserData(json);
-		this.writeFile();
 		updateUI();
 	}
 
@@ -432,14 +312,53 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	public void userActivity() {
 		Intent intent = new Intent(this, ActivitiesActivity.class);
-		intent.putExtra("RunInfo", activityInfoMap);
-		intent.putExtra("UserData", user_bio);
 		startActivityForResult(intent, ACTIVITIES_DATA);
 	}
 
 	public void searchHRM(View view) throws ActivityNotFoundException {
 		Intent scan_intent = new Intent(this, DeviceScanActivity.class);
 		startActivityForResult(scan_intent, BLUETOOTH_LE);
+	}
+
+	private Double sumArrayList(ArrayList<String> data) {
+		Double sum = 0.0;
+		for (int i = 0; i < data.size(); i++) {
+			String calories;
+			calories = data.get(i);
+			writeLog("updateStats(): data: " + data.get(i));
+			if (TypeCheck.isNumber(calories)) {
+				sum = sum + Double.parseDouble(calories);
+				writeLog(String.format(Locale.CANADA, "MainActivity: sumArrayList: sum: %f", sum));
+			}
+		}
+		return sum;
+	}
+
+	private void updateStats() {
+		user_bio.setNo_runs(sqliteHandler.getNoRunSummaries());
+		try {
+			ArrayList<String> results;
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_uid);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_distance);
+			user_bio.setTotal_distance_km(sumArrayList(results));
+			writeLog("updateStats(): user_bio.getTotal_distance_km(): " + user_bio.getTotal_distance_km());
+
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_gps_distance);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_average_speed);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_calories_distance);
+			user_bio.setTotal_calories(sumArrayList(results));
+			writeLog("updateStats(): user_bio.getTotal_calories(): " + user_bio.getTotal_calories());
+
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_calories_heart_beat);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_current_weight);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_current_fat);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_date_start);
+			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_date_end);
+		} catch (NumberFormatException e) {
+			writeLog("MainActivity: updateStats(): NUMBER FORMAT EXCEPTION: " + e.toString());
+		}
+		user_bio.getValues();
 	}
 
 	private void setupGui() {
@@ -500,7 +419,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		mMetricSystem.setOnClickListener(this);
 		mMetricSystem.setEnabled(true);
 		mMetricSystem.setVisibility(Switch.VISIBLE);
-		mMetricSystem.setText(R.string.user_unit_system_metric);
+		mMetricSystem.setText(R.string.user_unit_system_value);
 
 		mStatus = (TextView) findViewById(R.id.status);
 		mCalories = (TextView) findViewById(R.id.total_calories_value);
@@ -528,124 +447,68 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		mLink.setMovementMethod(LinkMovementMethod.getInstance());
 	}
 
-	private String printValue(Date value) {
-		String stringtoprint = "";
-		//SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-		SimpleDateFormat date_format = new SimpleDateFormat("MMMM/yyyy", Locale.getDefault());
-		if (value != null && value.after(new Date(1000000))) {
-			stringtoprint = date_format.format(value);
-		}
-		return stringtoprint;
-	}
-
-	private String printValue(double value) {
-		NumberFormat nf = NumberFormat.getInstance(Locale.getDefault());
-		String stringtoprint = "--";
-		if (value > 0) {
-			stringtoprint = nf.format(value);
-		}
-		return stringtoprint;
-	}
-
-	private String printValue(String value) {
-		String stringtoprint = "";
-		if (value != null && !value.isEmpty()) {
-			stringtoprint = value;
-		}
-		return stringtoprint;
-	}
-
-	public boolean isEmailValid(String email) {
-		String regExpn = "^(([\\w-]+\\.)+[\\w-]+|([a-zA-Z]{1}|[\\w-]{2,}))@"
-			+ "((([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
-			+ "[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\."
-			+ "([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?"
-			+ "[0-9]{1,2}|25[0-5]|2[0-4][0-9])){1}|"
-			+ "([a-zA-Z]+[\\w-]+\\.)+[a-zA-Z]{2,4})$";
-
-		Pattern pattern = Pattern.compile(regExpn, Pattern.CASE_INSENSITIVE);
-		Matcher matcher;
-		matcher = pattern.matcher(email);
-
-		return matcher.matches();
-	}
-
 	private void updateUI() {
-		user_bio.getValues();
-		user_bio.setMetric(mMetricSystem.isChecked() ? "imperial" : "metric");
-		if (user_bio.getMetric().compareToIgnoreCase("metric") == 0) {
-			mMetricSystem.setText(R.string.user_unit_system_metric);
-			mUserTargetWeight.setText(printValue(user_bio.getTarget_weight_v()));
-			mUserCurrentWeight.setText(printValue(user_bio.getCurrent_weight_v()));
-			mDistance.setText(printValue(user_bio.getTotal_distance_km()));
-		} else {
-			mMetricSystem.setText(R.string.user_unit_system_imperial);
-			mUserTargetWeight.setText(printValue(user_bio.getTarget_weight_v_imperial()));
-			mUserCurrentWeight.setText(printValue(user_bio.getTarget_weight_v_imperial()));
-			mDistance.setText(printValue(user_bio.getTotal_distance_miles()));
+		if (newUser != null) {
+			writeLog("MainActivity: updateUI: newUser!=null");
+			newUser.setMetric(mMetricSystem.isChecked() ? "imperial" : "metric");
 		}
-
-		mCalories.setText(printValue(user_bio.getTotal_calories()));
-		mTotalRuns.setText(printValue(user_bio.getTotal_runs()));
-
-		mUsername.setText(printValue(user_bio.getFull_name()));
-		mUserCurrentFat.setText(printValue(user_bio.getCurrent_fat_v()));
-		mUserTargetFat.setText(printValue(user_bio.getTarget_fat_v()));
-
-		mBodyMassIndex.setText(printValue(user_bio.getBmi()));
-		mBodyAdiposityIndex.setText(printValue(user_bio.getBai()));
-
-		if (user_bio.getAge() > minimum_age) {
-			user_bio.getValues();
-			mUserMaxHR.setText(printValue(user_bio.getMaximum_hr()));
-			mVO2max.setText(printValue(user_bio.getVo2max()));
-			mHeartRateReserve.setText(printValue(user_bio.getHr_reserve()));
-		}
-
-		mRecoveryHeartRate.setText(printValue(user_bio.getRecovery_hr()));
-		mRestingHeartRate.setText(printValue(user_bio.getResting_hr()));
-
 		writeLog(String.format(Locale.CANADA, "MainActivity: updateUI(): simpleOAuth2Token: %s", simpleOAuth2Token != null ? simpleOAuth2Token.toString() : "null fornow..."));
 		mIsAuthenticated = (simpleOAuth2Token != null && !simpleOAuth2Token.isExpired());
 		mIsEmailSignedIn = mIsAuthenticated;
-
 		mGoogleSignIn.setEnabled(!mIsAuthenticated);
 		mGoogleSignIn.setVisibility(mIsAuthenticated ? View.INVISIBLE : View.VISIBLE);
-
 		if (mIsAuthenticated) {
-			mUserInfo.setText(String.format("Member since %s", printValue(user_bio.getCreated_v())));
-			try {
-				mStatus.setText(getString(R.string.signed_in_fmt, user_bio.getFull_name()));
-				//ViewGroup layout = (ViewGroup) mGoogleSignIn.getParent();
-				//if (null != layout) //for safety only  as you are doing onClick
-				//layout.removeView(mGoogleSignIn);
-
-				mSignOutButton.setText(R.string.sign_out);
-				mSignOutButton.setBackgroundColor(Color.DKGRAY);
-				mSignOutButton.setTextColor(Color.LTGRAY);
-				mSignOutButton.setEnabled(true);
-				mSignOutButton.setVisibility(View.VISIBLE);
-
-				mNewUserButton.setEnabled(false);
-				mNewUserButton.setVisibility(View.VISIBLE);
-				mNewUserButton.setEnabled(false);
-				mNewUserButton.setVisibility(View.VISIBLE);
-
-				getRunData(!isUpdated);
-
-			} catch (JSONException | MalformedURLException | InterruptedException e) {
-				e.printStackTrace();
+			this.updateStats();
+			mUserInfo.setText(String.format("Member since %s", PrintValue.printValue(user_bio.getCreated_v())));
+			mStatus.setText(getString(R.string.signed_in_fmt, user_bio.getFull_name()));
+			//ViewGroup layout = (ViewGroup) mGoogleSignIn.getParent();
+			//if (null != layout) //for safety only  as you are doing onClick
+			//layout.removeView(mGoogleSignIn);
+			mSignOutButton.setText(R.string.sign_out);
+			mSignOutButton.setBackgroundColor(Color.DKGRAY);
+			mSignOutButton.setTextColor(Color.LTGRAY);
+			mSignOutButton.setEnabled(true);
+			mSignOutButton.setVisibility(View.VISIBLE);
+			mNewUserButton.setEnabled(false);
+			mNewUserButton.setVisibility(View.VISIBLE);
+			mNewUserButton.setEnabled(false);
+			mNewUserButton.setVisibility(View.VISIBLE);
+			if (user_bio != null) {
+				boolean unit_system = user_bio.getMetric().compareToIgnoreCase("metric") == 0;
+				mMetricSystem.setChecked(unit_system);
+				if (unit_system) {
+					mMetricSystem.setText(R.string.user_unit_system_metric);
+					mUserTargetWeight.setText(PrintValue.printValue(user_bio.getTarget_weight_v()));
+					mUserCurrentWeight.setText(PrintValue.printValue(user_bio.getCurrent_weight_v()));
+					mDistance.setText(PrintValue.printValue(user_bio.getTotal_distance_km()));
+				} else {
+					mMetricSystem.setText(R.string.user_unit_system_imperial);
+					mUserTargetWeight.setText(PrintValue.printValue(user_bio.getTarget_weight_v_imperial()));
+					mUserCurrentWeight.setText(PrintValue.printValue(user_bio.getTarget_weight_v_imperial()));
+					mDistance.setText(PrintValue.printValue(user_bio.getTotal_distance_miles()));
+				}
+				mCalories.setText(PrintValue.printValue(user_bio.getTotal_calories()));
+				mTotalRuns.setText(PrintValue.printValue(user_bio.getNo_runs()));
+				mUsername.setText(PrintValue.printValue(user_bio.getFull_name()));
+				mUserCurrentFat.setText(PrintValue.printValue(user_bio.getCurrent_fat_v()));
+				mUserTargetFat.setText(PrintValue.printValue(user_bio.getTarget_fat_v()));
+				mBodyMassIndex.setText(PrintValue.printValue(user_bio.getBmi()));
+				mBodyAdiposityIndex.setText(PrintValue.printValue(user_bio.getBai()));
+				if (user_bio.getAge() > minimum_age) {
+					mUserMaxHR.setText(PrintValue.printValue(user_bio.getMaximum_hr()));
+					mVO2max.setText(PrintValue.printValue(user_bio.getVo2max()));
+					mHeartRateReserve.setText(PrintValue.printValue(user_bio.getHr_reserve()));
+				}
+				mRecoveryHeartRate.setText(PrintValue.printValue(user_bio.getRecovery_hr()));
+				mRestingHeartRate.setText(PrintValue.printValue(user_bio.getResting_hr()));
 			}
 		} else {
 			mStatus.setText(R.string.signed_out);
 			mUserInfo.setText("");
-
 			mEmailSignInButton.setEnabled(true);
 			mEmailSignInButton.setVisibility(Button.VISIBLE);
-
 			mSignOutButton.setEnabled(false);
 			mSignOutButton.setVisibility(View.INVISIBLE);
-
 			mNewUserButton.setEnabled(true);
 			mNewUserButton.setVisibility(Button.VISIBLE);
 		}
@@ -677,6 +540,25 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		return result;
 	}
 
+	private void authUser(String email, String password) {
+		mAuth.signInWithEmailAndPassword(email, password)
+			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+				@Override
+				public void onComplete(@NonNull Task<AuthResult> task) {
+					writeLog("signInWithEmail:onComplete:" + task.isSuccessful());
+
+					// If sign in fails, display a message to the user. If sign in succeeds
+					// the auth state listener will be notified and logic to handle the
+					// signed in user can be handled in the listener.
+					if (!task.isSuccessful()) {
+						Log.w(TAG, "signInWithEmail:failed", task.getException());
+						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_SHORT).show();
+					}
+				}
+			});
+	}
+
+
 	private boolean sendFirebaseToken() {
 		try {
 			if (isServerReady()) {
@@ -699,51 +581,51 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		return true;
 	}
 
-	private boolean getOAuth2Token(JSONObject jsonUserData) {
+	private boolean getOAuth2Token() {
+		writeLog("MainActivity: getOAuth2Token: jsonUserData: ");
 		try {
-			if (isServerReady()) {
+			if (isServerReady() && (simpleOAuth2Token == null || simpleOAuth2Token.isExpired())) {
 				available.acquire();
 				dbExchange.clear();
 				dbExchange.setUrl(new URL("http://192.168.1.101:8080/auth/oauth/token"));
 				dbExchange.setCommand("get_token");
-				dbExchange.setAccountEmail(jsonUserData.isNull("email") ? null : jsonUserData.getString("email"));
-				dbExchange.setFull_name(jsonUserData.isNull("full_name") ? null : jsonUserData.getString("full_name"));
 				dbExchange.setGrant_type("client_credentials");
 				dbExchange.setMethod("POST");
-				dbExchange.setClient_id(user_bio.getIdToken());
-				dbExchange.setClient_id(null);
-				dbExchange.setClient_secret(null);
-				dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
-				dbExchange.getJson_data_in().put("email", jsonUserData.isNull("email") ? "-" : jsonUserData.get("email"));
-				dbExchange.getJson_data_in().put("passwd", jsonUserData.isNull("passwd") ? "-" : jsonUserData.get("passwd"));
-				dbExchange.getJson_data_in().put("logged", jsonUserData.isNull("logged") ? "-" : jsonUserData.get("logged"));
+				dbExchange.setClient_id(user_bio.getUid());
+				dbExchange.setClient_secret("password");
 				dbExchange.setJson_data_in(new JSONObject());
 				String hash = dbExchange.getHash();
 				available.release();
 				sendServerDataServiceRequest(hash);
 			}
-		} catch (JSONException | MalformedURLException | InterruptedException e) {
+		} catch (MalformedURLException | InterruptedException e) {
 			e.printStackTrace();
 		}
 		return true;
 	}
 
-	private void authUser(String email, String password) {
-		mAuth.signInWithEmailAndPassword(email, password)
-			.addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-				@Override
-				public void onComplete(@NonNull Task<AuthResult> task) {
-					writeLog("signInWithEmail:onComplete:" + task.isSuccessful());
-
-					// If sign in fails, display a message to the user. If sign in succeeds
-					// the auth state listener will be notified and logic to handle the
-					// signed in user can be handled in the listener.
-					if (!task.isSuccessful()) {
-						Log.w(TAG, "signInWithEmail:failed", task.getException());
-						Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_SHORT).show();
-					}
-				}
-			});
+	private boolean getUserInfo() {
+		writeLog("MainActivity: getUserInfo() for : " + user_bio.getUid());
+		try {
+			if (isServerReady()) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.101:/userdata/" + user_bio.getUid()));
+				dbExchange.setCommand("get_user_info");
+				dbExchange.setMethod("GET");
+				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				dbExchange.setJson_data_in(new JSONObject());
+				String hash = dbExchange.getHash();
+				available.release();
+				sendServerDataServiceRequest(hash);
+			}
+		} catch (MalformedURLException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return true;
 	}
 
 	private void createNewUser() {
@@ -807,41 +689,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	}
 
-	private int getRunInfo(int run_id) throws MalformedURLException, JSONException, InterruptedException {
-		boolean dataok = false;
-		if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
-			available.acquire();
-			dbExchange.clear();
-			//dbExchange.url = new URL("http://www.runtracer.com/runtracer.php");
-			dbExchange.setUrl(new URL("http://192.168.1.101:8082/health"));
-			Date dnow = new Date();
-			dbExchange.getJson_data_in().put("command", dbExchange.getCommand());
-			dbExchange.getJson_data_in().put("uid", user_bio.getUid());
-			dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
-			dbExchange.getJson_data_in().put("runid", run_id);
-			String hash = dbExchange.getHash();
-			available.release();
-			if (activityListMap.containsKey(run_id)) {
-				Long nowtime = dnow.getTime();
-				Long timeatimeout = (Long) activityListMap.get(run_id);
-				timeatimeout += NETWORK_TIMEOUT;
-				if (nowtime > timeatimeout) {
-					activityListMap.put(run_id, dnow.getTime());
-					for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-						writeLog(String.format(Locale.US, "getRunInfo: attempt: %d", attempts));
-						dataok = sendServerDataServiceRequest(hash);
-					}
-				}
-			} else {
-				activityListMap.put(run_id, dnow.getTime());
-				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-					dataok = sendServerDataServiceRequest(hash);
-				}
-			}
-		}
-		return 0;
-	}
-
 	private int getAllRunInfo() {
 		try {
 			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
@@ -884,7 +731,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onResume() {
 		super.onResume();
-		isBluetoothLeRegistered = true;
+		boolean isBluetoothLeRegistered = true;
 		if (mBluetoothLeService != null) {
 			mBluetoothLeService.connect(mDeviceAddress);
 		}
@@ -1027,29 +874,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	}
 
-	private int getRunData(boolean bNeedsUpdate) throws MalformedURLException, JSONException, InterruptedException {
-		boolean updateOk = !bNeedsUpdate;
-		if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
-			if (updateOk) {
-				long ltime;
-				Date cnow = new Date();
-				Collection runactivities = activityListMap.values();
-				Iterator itv = runactivities.iterator();
-				if (itv.hasNext() && activityListMap.size() > 1) {
-					updateOk = false;
-				}
-				for (; itv.hasNext(); ) {
-					ltime = (Long) itv.next();
-					updateOk = !(ltime > cnow.getTime());
-				}
-			}
-			if (!updateOk) {
-				getAllRunInfo();
-			}
-		}
-		return 0;
-	}
-
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
@@ -1084,12 +908,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_activity_button:
-				if (isUpdated) {
+				if (user_bio != null && simpleOAuth2Token != null && !simpleOAuth2Token.isExpired() && sqliteHandler.getNoRunSummaries() > 0) {
 					this.userActivity();
 				} else {
-					Snackbar.make(findViewById(android.R.id.content), "Please wait until all activities are loaded from server.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+					Snackbar.make(findViewById(android.R.id.content), "No Activities found or user not Authenticated.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
 				}
-
 				break;
 
 			case R.id.user_resting_hr_button:
@@ -1109,6 +932,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_unit_system:
+				if (newUser != null) {
+					newUser.setMetric(mMetricSystem.isChecked() ? "metric" : "imperial");
+				}
 				user_bio.setMetric(mMetricSystem.isChecked() ? "metric" : "imperial");
 				updateUI();
 				break;
@@ -1117,8 +943,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				FirebaseAuth.getInstance().signOut();
 				user_bio.clean();
 				simpleOAuth2Token = null;
-				activityListMap.clear();
-				activityInfoMap.clear();
 				mIsAuthenticated = false;
 				mIsEmailSignedIn = false;
 				mIsFirebaseSignedIn = false;
@@ -1217,6 +1041,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
 		FirebaseUser user = firebaseAuth.getCurrentUser();
 		if (user != null) {
+			mIsFirebaseSignedIn = true;
 			String name = user.getDisplayName();
 			String email = user.getEmail();
 			String uid = user.getUid();
@@ -1227,6 +1052,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (user.getDisplayName() != null && user.getDisplayName().length() > 4) {
 					newUser.setFull_name(user.getDisplayName());
 				}
+				newUser.setUid(uid);
 				newUser.setEmail(user.getEmail());
 				writeLog("onAuthStateChanged:signed_in:" + user.getUid());
 				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged new user: FirebaseUser: name: %s", name));
@@ -1237,9 +1063,9 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: name: %s", name));
 				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: email: %s", email));
 				writeLog(String.format(Locale.US, "MainActivity:onAuthStateChanged authUser: FirebaseUser: uid: %s", uid));
+				user_bio.setUid(uid);
 				user_bio.setFull_name(name);
 				user_bio.setEmail(email);
-				mIsFirebaseSignedIn = true;
 				mStatus.setText(String.format("%s%s", getString(R.string.signed_in_message), user.getEmail()));
 			}
 		} else {
@@ -1271,7 +1097,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				writeLog(String.format(Locale.US, "MainActivity:onComplete: Found existing FirebaseUser: received IdToken: %s", idToken));
 			}
 			sendFirebaseToken();
-			getOAuth2Token(user_bio.toJSON());
 		} else {
 			writeLog(String.format(Locale.US, "MainActivity:onComplete: FirebaseUser: idToken: %s", "FAILED"));
 			user_bio.clean();
@@ -1296,42 +1121,14 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			processResponse(dbExchange);
 		}
 
-		private boolean updateRunInfo(int run_id, JSONObject json_run_info) {
-			boolean update_result = false;
-			RunData run_info = new RunData();
-			Date dnow = new Date();
-			writeLog(String.format(Locale.US, "updateRunInfo: run_id: %d", run_id));
-
-			if (activityListMap.containsKey(run_id)) {
-				if (dnow.getTime() >= (long) activityListMap.get(run_id)) {
-					if (!activityInfoMap.containsKey(run_id)) {
-						if (!json_run_info.isNull("calories_distance")) {
-							run_info = run_info.fromJSON(json_run_info);
-							activityInfoMap.put(run_id, run_info);
-							activityListMap.put(run_id, dnow.getTime() * 2); //unix time now x 2
-							user_bio.setTotal_runs(activityInfoMap.size());
-							user_bio.getValues();
-							update_result = true;
-						}
-					} else {
-						run_info = (RunData) activityInfoMap.get(run_id);
-						user_bio.setTotal_runs(activityInfoMap.size());
-					}
-				}
-			}
-			user_bio.setTotal_distance_km(user_bio.getTotal_distance_km() + run_info.getDistance_km_v());
-			user_bio.setTotal_calories(user_bio.getTotal_calories() + run_info.getCalories_v_distance());
-			return update_result;
-		}
-
 		public void processResponse(DataBaseExchange dbEx) {
 			Boolean bUserAlreadyCreated;
 			Boolean bUserStatusReady;
 			Boolean bUserValidated = false;
 			int sender = 0;
-			writeLog(String.format(Locale.CANADA, "processResponse: dbEx.getAttemptNo(): %d", dbEx.getAttemptNo()));
 			try {
 				if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() < dbEx.getMaxAttempts()) {
+					writeLog(String.format(Locale.CANADA, "processResponse: ERROR: %d\tdbEx.getAttemptNo(): %d", dbEx.getError_no(), dbEx.getAttemptNo()));
 					final DataBaseExchange retry = (DataBaseExchange) dbEx.clone();
 					Handler handler = new Handler();
 					handler.postDelayed(new Runnable() {
@@ -1356,7 +1153,16 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					MainActivity.simpleOAuth2Token = new SimpleOAuth2Token(dbEx.getJson_data_out().getString("access_token"));
 					MainActivity.simpleOAuth2Token.setExpiry(1000L * dbEx.getJson_data_out().getInt("expires_in"));
 					writeLog("MainActivity: processResponse: processing token: " + simpleOAuth2Token.toString());
+					getUserInfo();
 					updateUI();
+				}
+
+				if (dbEx.getJson_data_out() != null && !dbEx.getJson_data_out().isNull("id_token")) {
+					writeLog("MainActivity: processResponse: Received Firebase token update ok at resource server");
+					if (simpleOAuth2Token == null || simpleOAuth2Token.isExpired()) {
+						writeLog(String.format(Locale.CANADA, "MainActivity: processResponse: OAuth2 Token: simpleOAuth2Token==null: %b", simpleOAuth2Token == null));
+						getOAuth2Token();
+					}
 				}
 
 				if (dbEx.getJson_data_out() == null || dbEx.getJson_data_out().isNull("status") || dbEx.getJson_data_out().isNull("created") || dbEx.getJson_data_out().isNull("sender")) {
@@ -1394,9 +1200,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					writeLog(String.format(Locale.US, "processResponse: Exception 02: %s", e.toString()));
 					e.printStackTrace();
 				}
-				user_bio.getValues();
-				bUserAlreadyCreated = (user_bio.getCreated_v().after(new Date(0)) || user_bio.getCreated().compareTo("1") == 0);
-				bUserStatusReady = !(user_bio.getStatus().compareTo("0") == 0);
+				bUserAlreadyCreated = user_bio != null && (user_bio.getCreated() != null);
+				bUserStatusReady = user_bio != null && (user_bio.getStatus().compareTo("ready") == 0);
 
 				if (!bUserAlreadyCreated) {
 					Snackbar.make(findViewById(android.R.id.content), "User not created, select New User and create your profile.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
@@ -1409,6 +1214,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 				switch (sender) {
 					case get_user_data:
+						writeLog(String.format(Locale.US, "MainActivity: processResponse: sender: get_user_data: sender: %d", sender));
+						user_bio = new UserData().fromJSON(dbEx.getJson_data_out());
+						writeLog(String.format(Locale.US, "MainActivity: processResponse: sender: get_user_data: full name: %s", user_bio.getFull_name()));
+						user_bio.getValues();
+						writeLog(String.format(Locale.US, "MainActivity: processResponse: sender: get_user_data: updating UI: metric: %s", user_bio.getMetric()));
+						mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
+						updateUI();
 						break;
 
 					case send_user_data:
@@ -1424,7 +1236,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 							user_bio.fromJSON(dbEx.getJson_data_out());
 							mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
 							writeLog(String.format(Locale.US, "processResponse: getRunData(!isUpdated: %b)", !isUpdated));
-							getRunData(!isUpdated);
 							updateUI();
 						} else {
 							if (!bUserAlreadyCreated) {
@@ -1435,7 +1246,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						break;
 					default:
 				}
-			} catch (CloneNotSupportedException | MalformedURLException | JSONException | InterruptedException e) {
+			} catch (CloneNotSupportedException | JSONException e) {
 				e.printStackTrace();
 			}
 		}

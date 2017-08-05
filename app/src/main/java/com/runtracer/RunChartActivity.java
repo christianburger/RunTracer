@@ -7,6 +7,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
@@ -18,19 +19,19 @@ import android.widget.Toast;
 import com.runtracer.model.RunData;
 import com.runtracer.model.RunInstant;
 import com.runtracer.model.UserData;
+import com.runtracer.sqlitedb.SqliteHandler;
+import com.runtracer.utilities.TypeCheck;
 
 import java.io.UnsupportedEncodingException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
 
 public class RunChartActivity extends AppCompatActivity implements View.OnClickListener {
 
-	private static final String TAG = "runtracer";
+	private static final String TAG = "runchart";
+	private SqliteHandler sqliteHandler;
 
 	String jscript = "";
 	int no_xpoints = 0;
@@ -52,6 +53,9 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 		setSupportActionBar(toolbar);
 
+		sqliteHandler = MainActivity.sqliteHandler;
+		user_data = MainActivity.user_bio;
+
 		mDrawMap = (FloatingActionButton) findViewById(R.id.fab_draw_map);
 		mDrawMap.setOnClickListener(this);
 		/*
@@ -72,17 +76,29 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
-			run_data = (RunData) extras.getSerializable("run_data");
-			user_data = (UserData) extras.getSerializable("user_data");
+			String runid = extras.getString("run_data");
+			long runid_v;
+			if (TypeCheck.isNumber(runid)) {
+				runid_v = Long.parseLong(runid);
+				run_data = sqliteHandler.getRunData(runid_v);
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: received: runid: %s", runid));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: received: runid_v: %d", runid_v));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: received: run_data: %s", run_data.toString()));
+			}
+			//(UserData) extras.getSerializable("user_data");
+			writeLog(String.format(Locale.CANADA, "RunChartActivity: calling updateWebView: uid: %s", run_data.getUid()));
 			updateWebview();
 		}
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 	}
 
 	boolean updateWebview() {
+		writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: uid: %s", run_data.getUid()));
 		if (run_data != null) {
 			try {
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: getDateValues: %s", run_data.getDateValues()));
 				no_xpoints = run_data.getDateValues();
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: no_xpoints: %s", no_xpoints));
 				if (showingMap) {
 					jscript = generateJSMapCode(1200 + no_xpoints, 800);
 					mChartView.setInitialScale(getScaleY(1200));
@@ -101,6 +117,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 	}
 
 	private String generateJSCode(int c_width, int c_height) throws UnsupportedEncodingException {
+		writeLog(String.format(Locale.CANADA, "RunChartActivity: generateJSCode(%d, %d)", c_width, c_height));
 		String code = "";
 		long starting_time = run_data.getRun_date_start_v().getTime();
 		NumberFormat nf = NumberFormat.getInstance(Locale.CANADA);
@@ -137,25 +154,19 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "		data.addRows([";
 		code += "\n";
-		writeLog("RunChartActivity: received: runtrace:");
-		if (run_data.getRuntrace() != null && run_data.getRuntrace().size() > 0) {
-			List <Long>keys = (List<Long>) new ArrayList(run_data.getRuntrace().keySet());
-			Collections.sort(keys);
-			Iterator it = keys.iterator();
-			for (; it.hasNext(); ) {
-				double speed;
-				RunInstant tmp_instant = new RunInstant();
-				tmp_instant = run_data.getRuntrace().get(it.next());
-				if (user_data.getMetric().compareToIgnoreCase("metric") == 0) {
-					speed = tmp_instant.current_motion_speed_km_h_v;
-				} else {
-					speed = tmp_instant.current_motion_speed_km_h_v * run_data.getConv_km_miles();
-				}
-				code += String.format(Locale.CANADA, "\n[%d, %d, %s, %s, %s],", (tmp_instant.current_time - starting_time) / 1000, tmp_instant.current_heart_rate, nf.format(speed), nf.format(tmp_instant.calories_v_distance), nf.format(tmp_instant.calories_v_heart_beat));
+
+		ArrayList<RunInstant> list = sqliteHandler.getRunInstants(run_data.getRun_id_v());
+		for (RunInstant runInstant : list) {
+			double speed;
+			if (user_data.getMetric().compareToIgnoreCase("metric") == 0) {
+				speed = runInstant.getCurrent_motion_speed_km_h_v();
+			} else {
+				speed = runInstant.getCurrent_motion_speed_km_h_v() * run_data.getConv_km_miles();
 			}
-		} else {
-			writeLog(String.format("RunChartActivity: error: run_data.runtrace: %b", run_data.getRuntrace() != null));
+			writeLog(String.format(Locale.CANADA, "RunChartActivity: speed: %.4f  nf.format(speed): %s", speed, nf.format(speed)));
+			code += String.format(Locale.CANADA, "\n[%d, %d, %s, %s, %s],", (runInstant.getCtime() - starting_time) / 1000, runInstant.getCurrent_heart_rate(), nf.format(speed), nf.format(runInstant.getCalories_v_distance()), nf.format(runInstant.getCalories_v_heart_beat()));
 		}
+
 		code += "\n";
 		code += "		]);";
 		code += "\n";
@@ -208,14 +219,10 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		return (code);
 	}
 
-
 	private String generateJSMapCode(int c_width, int c_height) throws UnsupportedEncodingException {
+		writeLog(String.format(Locale.CANADA, "RunChartActivity: generateJSMapCode(%d, %d)", c_width, c_height));
 		String code = "";
 		NumberFormat nf = NumberFormat.getInstance(Locale.CANADA);
-		List keys = (List<Long>) new ArrayList(run_data.getRuntrace().keySet());
-		Collections.sort(keys);
-		Iterator it = keys.iterator();
-
 		code += "\n";
 		code += "	<html> ";
 		code += "\n";
@@ -235,13 +242,10 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "		['Lat', 'Long', 'Name'], ";
 		code += "\n";
-
-		for (; it.hasNext(); ) {
-			RunInstant tmp_instant = new RunInstant();
-			tmp_instant = run_data.getRuntrace().get(it.next());
-			code += String.format(Locale.CANADA, "\n[%s, %s, 'time: %d" + "s'],", nf.format(tmp_instant.latitude), nf.format(tmp_instant.longitude), (tmp_instant.current_time - run_data.getRun_date_start_v().getTime()) / 1000);
+		ArrayList<RunInstant> list = sqliteHandler.getRunInstants(run_data.getRun_id_v());
+		for (RunInstant runInstant : list) {
+			code += String.format(Locale.CANADA, "\n[%s, %s, 'time: %d" + "s'],", nf.format(runInstant.getLatitude()), nf.format(runInstant.getLongitude()), (runInstant.getCtime() - run_data.getRun_date_start_v().getTime()) / 1000);
 		}
-
 		//	code += "		[37.4422, -122.1731, 'Shopping'] ";
 		code += "\n";
 		code += "		]); ";
@@ -273,7 +277,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
 		int height = display.getHeight();
 		Double val;
-		val = new Double(height) / new Double(pic_height);
+		val = (double) height / (double) pic_height;
 		val = val * 100d;
 		return val.intValue();
 	}
@@ -282,14 +286,14 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
 		int width = display.getWidth();
 		Double val;
-		val = new Double(width) / new Double(pic_width);
+		val = (double) width / (double) pic_width;
 		val = val * 100d;
 		return val.intValue();
 	}
 
 	public void writeLog(String msg) {
 		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss", new java.util.Date()).toString());
-//		Log.e(TAG, date + ": " + msg);
+		Log.e(TAG, date + ": " + msg);
 	}
 
 	/**

@@ -7,21 +7,32 @@
       <w>calorieshr</w>
       <w>cchar</w>
       <w>cdate</w>
+      <w>childposition</w>
       <w>circunference</w>
       <w>ckey</w>
       <w>colidx</w>
+      <w>colname</w>
       <w>colsz</w>
+      <w>coltype</w>
+      <w>coltypest</w>
+      <w>colvaluest</w>
       <w>conv</w>
+      <w>ctime</w>
       <w>dataok</w>
+      <w>dataset</w>
+      <w>datenow</w>
       <w>firebase</w>
       <w>gpsdistance</w>
       <w>gpsspeed</w>
       <w>healthcare</w>
       <w>heartrate</w>
       <w>infosz</w>
+      <w>jscript</w>
       <w>jsonuserdata</w>
       <w>keyname</w>
+      <w>lastmonthcomparedate</w>
       <w>lretrieved</w>
+      <w>lruninfo</w>
       <w>mapsz</w>
       <w>mdistance</w>
       <w>mspeed</w>
@@ -30,16 +41,22 @@
       <w>returnval</w>
       <w>retval</w>
       <w>rowidx</w>
+      <w>runchart</w>
       <w>rundata</w>
       <w>runid</w>
+      <w>runinfo</w>
       <w>runinfofile</w>
+      <w>runinstants</w>
       <w>runmapfile</w>
       <w>runtrace</w>
       <w>runtracer</w>
       <w>sqlite</w>
+      <w>sqlitedbfile</w>
       <w>stringtoprint</w>
+      <w>thismonthcomparedate</w>
       <w>threadmill</w>
       <w>userdatafile</w>
+      <w>webview</w>
     </words>
   </dictionary>
 </component>

@@ -35,7 +35,6 @@ import static android.os.Process.myTid;
  */
 public class ServerDataService extends IntentService {
 
-	protected static final String ACTION_GET_OAUTH2_TOKEN = "com.runtracer.oauth2_token";
 	public static final String ACTION_QUERY_SERVER = "com.runtracer.query_server";
 	protected static final String ACTION_REPORT_STATUS = "com.runtracer.report_status";
 	protected static final String PARAM_OUT_MSG = "param_out_msg";
@@ -48,12 +47,10 @@ public class ServerDataService extends IntentService {
 
 	private static DataBaseExchange localDbExchange;
 
-	private SimpleOAuth2Token simpleOAuth2Token;
 	private int attempts;
 
 	public ServerDataService() {
 		super("ServerDataService");
-		simpleOAuth2Token = new SimpleOAuth2Token("", new Date());
 		localDbExchange = DataBaseExchange.createDataBaseExchange();
 		writeLog("\n\n\n\n\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nServerDataService: starting ServerDataService...");
 	}
@@ -192,6 +189,14 @@ public class ServerDataService extends IntentService {
 			httpConnection.setUseCaches(false);
 			httpConnection.setRequestMethod(dbEx.getMethod());
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange: AFTER: httpConnection: %s", httpConnection.toString()));
+			if (dbEx.getSimpleOAuth2Token()!=null &&  dbEx.getSimpleOAuth2Token().getToken()!=null ) {
+				httpConnection.setRequestProperty("Authorization", "Bearer " + dbEx.getSimpleOAuth2Token().getToken());
+				writeLog(String.format(Locale.CANADA, "httpConnection.setRequestProperty(\"Authorization\", %s)", "Bearer " + dbEx.getSimpleOAuth2Token().getToken()));
+
+				httpConnection.setRequestMethod(dbEx.getMethod());
+				writeLog(String.format(Locale.CANADA, "httpConnection.setRequestMethod(%s)", dbEx.getMethod()));
+				writeLog(String.format(Locale.CANADA, "httpConnection.getRequestMethod(%s)", httpConnection.getRequestMethod()));
+			}
 			if (dbEx.getClient_id() != null && dbEx.getClient_secret() != null) {
 				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_id\", dbEx.getClient_id(): %s)", dbEx.getClient_id()));
 				writeLog(String.format(Locale.CANADA, "httpConnection.addRequestProperty(\"client_secret\", dbEx.getClient_secret(): %s)", dbEx.getClient_secret()));
@@ -199,7 +204,6 @@ public class ServerDataService extends IntentService {
 				String basicAuth = "Basic " + Base64.encodeToString(userCredentials.getBytes(), Base64.DEFAULT);
 				writeLog(String.format(Locale.CANADA, "ServerDataService:doExchange: basicAuth: %s", basicAuth));
 				httpConnection.setRequestProperty("Authorization", basicAuth);
-				httpConnection.setRequestMethod("POST");
 				httpConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 				//httpConnection.setRequestProperty("Content-Length", "14");
 				httpConnection.setRequestProperty("Content-Language", "en-US");
@@ -222,8 +226,6 @@ public class ServerDataService extends IntentService {
 				//httpConnection.addRequestProperty("grant_type", dbEx.getGrant_type());
 				//httpConnection.setRequestProperty("grant_type", dbEx.getGrant_type());
 			}
-			//httpConnection.setRequestMethod("GET");
-			//httpConnection.setRequestMethod("POST");
 			writeLog(String.format(Locale.US, "ServerDataService: %s", dbEx.toString()));
 		} catch (ProtocolException e) {
 			writeLog(String.format(Locale.US, "ServerDataService:doExchange:%d :IOException: %s", dbgidx, e.toString()));
