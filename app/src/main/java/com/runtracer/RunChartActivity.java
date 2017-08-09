@@ -116,9 +116,134 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		return (true);
 	}
 
-	private String generateJSCode(int c_width, int c_height) throws UnsupportedEncodingException {
-		writeLog(String.format(Locale.CANADA, "RunChartActivity: generateJSCode(%d, %d)", c_width, c_height));
+	private String generateMaterialChart(int c_width, int c_height) throws UnsupportedEncodingException {
+		long starting_time = run_data.getRun_date_start_v().getTime();
+		NumberFormat nf = NumberFormat.getInstance(Locale.CANADA);
+
 		String code = "";
+		code += "\n";
+		code += "<script type=\"text/javascript\" src=\"https://www.gstatic.com/charts/loader.js\"></script>";
+		code += "\n";
+		code += "<br><br>";
+		code += "\n";
+		code += "<div id=\"chart_div\"></div>";
+		code += "\n";
+
+		code += "<script type=\"text/javascript\">";
+		code += "\n";
+		code += "google.charts.load('current', {'packages':['line', 'corechart']});";
+		code += "\n";
+		code += "google.charts.setOnLoadCallback(drawChart);";
+		code += "\n";
+
+		code += "function drawChart() {";
+		code += "\n";
+		code += "  var button = document.getElementById('change-chart');";
+		code += "\n";
+		code += "  var chartDiv = document.getElementById('chart_div');";
+		code += "\n";
+		code += "  var data = new google.visualization.DataTable();";
+		code += "\n";
+		code += "  data.addColumn('number', 'Time');";
+		code += "\n";
+		code += "  data.addColumn('number', 'Speed');";
+		code += "\n";
+		code += "  data.addColumn('number', \"Heart Rate\");";
+		code += "\n";
+		code += "  data.addColumn('number', \"Calories (distance)\");";
+		code += "\n";
+		code += "  data.addColumn('number', \"Calories (heart rate)\");";
+		code += "\n";
+		code += "  data.addRows([";
+		code += "\n";
+
+
+		ArrayList<RunInstant> list = sqliteHandler.getRunInstants(run_data.getRun_id_v());
+		for (RunInstant runInstant : list) {
+			double speed;
+			if (user_data.getMetric().compareToIgnoreCase("metric") == 0) {
+				speed = runInstant.getCurrent_motion_speed_km_h_v();
+			} else {
+				speed = runInstant.getCurrent_motion_speed_km_h_v() * run_data.getConv_km_miles();
+			}
+			writeLog(String.format(Locale.CANADA, "RunChartActivity: speed: %.4f  nf.format(speed): %s", speed, nf.format(speed)));
+			code += String.format(Locale.CANADA, "\n[%d, %d, %s, %s, %s],", (runInstant.getCtime() - starting_time) / 1000, runInstant.getCurrent_heart_rate(), nf.format(speed), nf.format(runInstant.getCalories_v_distance()), nf.format(runInstant.getCalories_v_heart_beat()));
+		}
+
+
+		code += "\n";
+		code += "  ]);";
+		code += "\n";
+		code += "  var materialOptions = {";
+		code += "\n";
+		code += "    chart: {";
+		code += "\n";
+		code += "      title: 'Average Temperatures and Daylight in Iceland Throughout the Year'";
+		code += "\n";
+		code += "    },";
+		code += "\n";
+		code += "    width: 900,";
+		code += "\n";
+		code += "    height: 500,";
+		code += "\n";
+		code += "    series: {";
+		code += "\n";
+
+		// Gives each series an axis name that matches the Y-axis below.";
+		code += "      0: {axis: 'Speed'},";
+		code += "\n";
+		code += "      1: {axis: 'HeartRate'},";
+		code += "\n";
+		code += "      2: {axis: 'CaloriesDistance'},";
+		code += "\n";
+		code += "      3: {axis: 'CaloriesHeart'}";
+		code += "\n";
+		code += "    },";
+		code += "\n";
+		code += "    axes: {";
+		code += "\n";
+
+		// Adds labels to each axis; they don't have to match the axis names.";
+		code += "      y: {";
+		code += "\n";
+		code += "        Speed: {label: 'Speed (km/h)'},";
+		code += "\n";
+		code += "        HeartRate: {label: 'Heart Rate (Hz)'},";
+		code += "\n";
+		code += "        CaloriesDistance: {label: 'Calories (kCal)'},";
+		code += "\n";
+		code += "        CaloriesHeart: {label: 'Calories (kCal)'}";
+		code += "\n";
+		code += "      },";
+		code += "\n";
+		code += "    }";
+		code += "\n";
+		code += "  };";
+		code += "\n";
+		code += "  function drawMaterialChart() {";
+		code += "\n";
+		code += "    var materialChart = new google.charts.Line(chartDiv);";
+		code += "\n";
+		code += "    materialChart.draw(data, materialOptions);";
+		code += "\n";
+		code += "  }";
+		code += "\n";
+		code += "  drawMaterialChart();";
+		code += "\n";
+		code += "}";
+		code += "\n";
+		code += "</script>";
+		code += "\n";
+
+		writeLog(String.format(Locale.CANADA, "RunChartActivity: generateMaterialChart(%d, %d): code: %s", c_width, c_height, code));
+		return code;
+	}
+
+	private String generateJSCode(int c_width, int c_height) throws UnsupportedEncodingException {
+		String code = "";
+		String material = "";
+		writeLog(String.format(Locale.CANADA, "RunChartActivity: generateJSCode(%d, %d)", c_width, c_height));
+		material = this.generateMaterialChart(c_width, c_height);
 		long starting_time = run_data.getRun_date_start_v().getTime();
 		NumberFormat nf = NumberFormat.getInstance(Locale.CANADA);
 		code += "\n";
@@ -216,7 +341,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 
 		writeLog(String.format("code: %s", code));
-		return (code);
+		return (material);
 	}
 
 	private String generateJSMapCode(int c_width, int c_height) throws UnsupportedEncodingException {

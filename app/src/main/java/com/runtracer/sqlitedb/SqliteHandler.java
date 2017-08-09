@@ -505,7 +505,6 @@ public class SqliteHandler extends SQLiteOpenHelper {
 		return run_instant_list;
 	}
 
-
 	public synchronized int getNoRunSummaries() {
 		int no_runs = 0;
 		try {

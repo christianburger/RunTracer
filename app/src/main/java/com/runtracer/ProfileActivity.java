@@ -21,9 +21,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.runtracer.interfaces.OnDateSetListener;
-
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.runtracer.model.UserData;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -40,7 +38,7 @@ import static android.view.View.OnTouchListener;
 public class ProfileActivity extends AppCompatActivity implements OnDateSetListener, OnClickListener, OnTouchListener, TextView.OnEditorActionListener {
 	private static final String TAG = "profile";
 
-	protected static JSONObject userData;
+	protected static UserData userData;
 
 	public static String datePicked = "";
 
@@ -98,80 +96,28 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 		super.onCreate(savedInstanceState);
 		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 
-		Bundle extras = getIntent().getExtras();
-		if (extras != null) {
-			String value = extras.getString("user_info");
-			writeLog(String.format(Locale.US, "ProfileActivity: onCreate: value: %s", value));
-			try {
-				userData = new JSONObject(value);
-				retrievedFullName = userData.getString("full_name");
-				retrievedEmail = userData.getString("email");
-				retrievedDOB = userData.getString("birthday");
-				retrievedGender = userData.getString("gender");
-				retrievedFat = userData.getString("fat_percentage");
-				retrievedTargetFat = userData.getString("target_fat");
-				if (!userData.isNull("metric")) {
-					retrievedMetricSystem = userData.getInt("metric") == 1;
-				}
-				if (!userData.isNull("height")) {
-					retrievedHeight = userData.getString("height");
-					retrievedHeight_v = userData.getDouble("height");
-				}
-				if (!userData.isNull("hip_circumference")) {
-					retrievedHipCircumference = userData.getString("hip_circumference");
-					retrievedHipCircumference_v = userData.getDouble("hip_circumference");
-				}
-				if (!userData.isNull("weight")) {
-					retrievedWeight = userData.getString("weight");
-					;
-					retrievedWeight_v = userData.getDouble("weight");
-					;
-				}
-				if (!userData.isNull("target_weight")) {
-					retrievedTargetWeight = userData.getString("target_weight");
-					retrievedTargetWeight_v = userData.getDouble("target_weight");
-				}
-				if (!userData.isNull("fat_percentage")) {
-					retrievedFat = userData.getString("fat_percentage");
-					retrievedFat_v = userData.getDouble("fat_percentage");
-				}
-				if (!userData.isNull("target_fat")) {
-					retrievedTargetFat = userData.getString("target_fat");
-					retrievedTargetFat_v = userData.getDouble("target_fat");
-				}
-				if (retrievedFullName.compareTo("empty") == 0) {
-					retrievedFullName = "";
-				}
-				if (retrievedEmail.compareTo("empty") == 0) {
-					retrievedEmail = "";
-				}
-				if (retrievedDOB.compareTo("empty") == 0) {
-					retrievedDOB = "";
-				}
-				if (retrievedHeight.compareTo("empty") == 0) {
-					retrievedHeight = "";
-					retrievedHeight_v = 0;
-				}
-				if (retrievedHipCircumference.compareTo("empty") == 0) {
-					retrievedHipCircumference = "";
-					retrievedHipCircumference_v = 0;
-				}
-				if (retrievedTargetWeight.compareTo("empty") == 0) {
-					retrievedTargetWeight = "";
-					retrievedTargetWeight_v = 0;
-				}
-				if (retrievedFat.compareTo("empty") == 0) {
-					retrievedFat = "";
-					retrievedFat_v = 0;
-				}
-				if (retrievedTargetFat.compareTo("empty") == 0) {
-					retrievedTargetFat = "";
-					retrievedTargetFat_v = 0;
-				}
-				datePicked = retrievedDOB;
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
+		userData = MainActivity.user_bio;
+		if (userData != null) {
+			retrievedFullName = userData.getFull_name();
+			retrievedEmail = userData.getEmail();
+			retrievedDOB = userData.getBirthday();
+			retrievedGender = userData.getGender();
+			retrievedFat = userData.getCurrent_fat();
+			retrievedTargetFat = userData.getTarget_fat();
+			retrievedMetricSystem = userData.getMetric().compareTo("metric") == 0;
+			retrievedHeight = nf.format(userData.getHeight_v());
+			retrievedHeight_v = userData.getHeight_v();
+			retrievedHipCircumference = nf.format(userData.getHip_circumference_v());
+			retrievedHipCircumference_v = userData.getHip_circumference_v();
+			retrievedWeight = nf.format(userData.getCurrent_weight_v());
+			retrievedWeight_v = userData.getCurrent_weight_v();
+			retrievedTargetWeight = nf.format(userData.getTarget_weight_v());
+			retrievedTargetWeight_v = userData.getTarget_weight_v();
+			retrievedFat = nf.format(userData.getCurrent_fat_v());
+			retrievedFat_v = userData.getCurrent_fat_v();
+			retrievedTargetFat = nf.format(userData.getTarget_fat_v());
+			retrievedTargetFat_v = userData.getTarget_fat_v();
+			datePicked = retrievedDOB;
 		}
 		setContentView(R.layout.activity_profile);
 		try {
@@ -184,9 +130,9 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 	@Override
 	public void onDateSet(Date date) {
 		SimpleDateFormat l_format = new SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault());
-		writeLog(String.format(Locale.US, "ProfileActivity: LISTENER RECEIVED: date: %s >> retrievedDateOfBirth: %s ",date.toString(), date));
+		writeLog(String.format(Locale.US, "ProfileActivity: LISTENER RECEIVED: date: %s >> retrievedDateOfBirth: %s ", date.toString(), date));
 		mUserDateofBirth.setText(l_format.format(date));
-		retrievedDOB=l_format.format(date);
+		retrievedDOB = l_format.format(date);
 	}
 
 	@Override
@@ -319,10 +265,6 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 		mUserTargetWeight.setOnTouchListener(this);
 		mUserTargetWeight.setOnEditorActionListener(this);
 
-		mUserFat.setOnClickListener(this);
-		mUserFat.setOnClickListener(this);
-		mUserFat.setOnClickListener(this);
-		mUserFat.setOnClickListener(this);
 		mUserFat.setOnClickListener(this);
 		mUserFat.setOnTouchListener(this);
 		mUserFat.setOnEditorActionListener(this);
@@ -580,23 +522,19 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 				return false;
 			}
 			writeLog("getValues: true");
-			try {
-				userData.put("full_name", retrievedFullName);
-				userData.put("email", retrievedEmail);
-				userData.put("gender", retrievedGender);
-				userData.put("dob", retrievedDOB);
-				userData.put("fat", retrievedFat_v);
-				userData.put("target_fat", retrievedTargetFat_v);
-				userData.put("height", retrievedHeight_v);
-				userData.put("hip_circumference", retrievedHipCircumference_v);
-				userData.put("weight", retrievedWeight_v);
-				userData.put("target_weight", retrievedTargetWeight_v);
-				writeLog(String.format("getValues: userData: %s", userData.toString()));
-			} catch (JSONException e) {
-				writeLog(String.format("getValues: JSONException: %s", e.toString()));
-				e.printStackTrace();
-				return (false);
-			}
+			userData.setFull_name(retrievedFullName);
+			userData.setEmail(retrievedEmail);
+			userData.setGender(retrievedGender);
+			userData.setBirthday(retrievedDOB);
+			userData.setCurrent_fat_v(retrievedFat_v);
+			userData.setTarget_fat_v(retrievedTargetFat_v);
+			userData.setHeight_v(retrievedHeight_v);
+			userData.setHip_circumference_v(retrievedHipCircumference_v);
+			userData.setCurrent_weight_v(retrievedWeight_v);
+			userData.setTarget_weight_v(retrievedTargetWeight_v);
+			userData.getValues();
+			writeLog(String.format("getValues: userData: %s", userData.toString()));
+
 		} else {
 			writeLog("getValues: false");
 		}

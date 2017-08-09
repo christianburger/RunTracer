@@ -35,8 +35,6 @@ public class RunData implements Serializable {
 	final double conv_m_s_km_h = 3.6;
 	final double conv_km_miles = 0.621371192237;
 
-	static final int colsz = 12;
-
 	private Date run_date_start_v;
 	private Date run_date_end_v;
 
@@ -60,7 +58,6 @@ public class RunData implements Serializable {
 	private double distance_miles_v = 0.0;
 	private double gps_distance_km = 0.0;
 	private double gps_distance_miles = 0.0;
-	private long ctime = 0;
 
 	public void writeLog(String msg) {
 		SimpleDateFormat datef1 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
@@ -259,7 +256,6 @@ public class RunData implements Serializable {
 		out.writeObject(this.distance_miles_v);
 		out.writeObject(this.gps_distance_km);
 		out.writeObject(this.gps_distance_miles);
-		out.writeObject(this.ctime);
 	}
 
 	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -289,6 +285,5 @@ public class RunData implements Serializable {
 		this.distance_miles_v = (double) in.readObject();
 		this.gps_distance_km = (double) in.readObject();
 		this.gps_distance_miles = (double) in.readObject();
-		this.ctime = (long) in.readObject();
 	}
 }

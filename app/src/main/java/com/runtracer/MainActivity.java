@@ -258,9 +258,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		JSONObject json = user_bio.toJSON();
-		writeLog(String.format(Locale.US, "onPause(): CALLING changeUserData: json: %s", json));
-		changeUserData(json);
+		changeUserData();
 	}
 
 	public String getPackageDirectory() throws PackageManager.NameNotFoundException {
@@ -275,9 +273,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		JSONObject json = user_bio.toJSON();
-		writeLog(String.format(Locale.US, "onDestroy(): CALLING changeUserData: json: %s", json));
-		changeUserData(json);
+		changeUserData();
 		updateUI();
 	}
 
@@ -285,7 +281,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		Task<String> instanceId = mFirebaseAnalytics.getAppInstanceId();
 		writeLog("starting newRun(), instanceId: " + instanceId);
 		Intent intent = new Intent(this, RunActivity.class);
-		intent.putExtra("UserData", user_bio);
 		startActivityForResult(intent, RUN_USER_DATA);
 		writeLog("leaving newRun()");
 	}
@@ -304,9 +299,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	public void userProfile() {
-		writeLog(String.format(Locale.US, "userProfile: userInfo: %s", user_bio.toJSON()));
+		writeLog(String.format(Locale.US, "userProfile: userInfo: %s", user_bio));
 		Intent intent = new Intent(this, ProfileActivity.class);
-		intent.putExtra("user_info", user_bio.toJSON().toString());
 		startActivityForResult(intent, USER_PROFILE);
 	}
 
@@ -587,12 +581,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady() && (simpleOAuth2Token == null || simpleOAuth2Token.isExpired())) {
 				available.acquire();
 				dbExchange.clear();
+				dbExchange.setMaxAttempts(12);
 				dbExchange.setUrl(new URL("http://192.168.1.101:8080/auth/oauth/token"));
 				dbExchange.setCommand("get_token");
 				dbExchange.setGrant_type("client_credentials");
 				dbExchange.setMethod("POST");
 				dbExchange.setClient_id(user_bio.getUid());
-				dbExchange.setClient_secret("password");
+				String idtoken = (user_bio != null) ? user_bio.getIdToken() : null;
+				String password = idtoken != null ? idtoken.substring(0, 22) : null;
+				dbExchange.setClient_secret(password);
 				dbExchange.setJson_data_in(new JSONObject());
 				String hash = dbExchange.getHash();
 				available.release();
@@ -612,7 +609,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				dbExchange.clear();
 				dbExchange.setUrl(new URL("http://192.168.1.101:/userdata/" + user_bio.getUid()));
 				dbExchange.setCommand("get_user_info");
-				dbExchange.setMethod("GET");
+				dbExchange.setMethod("POST");
 				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
 				dbExchange.setGrant_type(null);
 				dbExchange.setClient_id(null);
@@ -627,6 +624,34 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 		return true;
 	}
+
+	private void changeUserData() {
+		boolean dataok = false;
+		try {
+			writeLog(String.format(Locale.US, "changeUserData: jsonUserData: %s", user_bio.toJSON()));
+			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.101/userdata/update/" + user_bio.getUid()));
+				dbExchange.setJson_data_in(user_bio.toJSON());
+				dbExchange.setCommand("change_user_info");
+				dbExchange.setMethod("POST");
+				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				String hash = dbExchange.getHash();
+				available.release();
+				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.getJson_data_in()));
+				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
+					dataok = sendServerDataServiceRequest(hash);
+				}
+			}
+		} catch (MalformedURLException | InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
 
 	private void createNewUser() {
 		try {
@@ -664,27 +689,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				}
 			}
 		} catch (InterruptedException | MalformedURLException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void changeUserData(JSONObject jsonUserData) {
-		boolean dataok = false;
-		try {
-			writeLog(String.format(Locale.US, "changeUserData: jsonUserData: %s", jsonUserData));
-			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
-				available.acquire();
-				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101/user/update"));
-				dbExchange.setJson_data_in(user_bio.toJSON());
-				String hash = dbExchange.getHash();
-				available.release();
-				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.getJson_data_in()));
-				for (int attempts = 0; attempts < 10 && !dataok; attempts++) {
-					dataok = sendServerDataServiceRequest(hash);
-				}
-			}
-		} catch (MalformedURLException | InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -810,8 +814,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 					if (userData.getString("user_data") != null) {
 						jsonUserData = new JSONObject(userData.getString("user_data"));
 						user_bio.fromJSON(jsonUserData);
-						writeLog(String.format(Locale.US, "onActivityResult: requestCode==USER_PROFILE: CALLING changeUserData: json: %s", jsonUserData));
-						changeUserData(jsonUserData);
+						changeUserData();
 					}
 				}
 			} catch (Exception e) {

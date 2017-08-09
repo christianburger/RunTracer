@@ -1,7 +1,10 @@
 package com.runtracer.model;
+
 import android.util.Log;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
@@ -9,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -108,10 +112,12 @@ public class UserData implements Serializable {
 	}
 
 	public void setPassword(String password) {
-		this.password=password;
+		this.password = password;
 	}
 
 	public int getValues() {
+		this.cff = 1.00;
+		writeLog(String.format("UserData:getValues(): cff: %s", this.getCff()));
 		if (this.first_name != null && this.last_name != null && this.first_name.length() > 4 && this.last_name.length() > 4) {
 			this.full_name = this.first_name + " " + this.last_name;
 		} else {
@@ -127,16 +133,6 @@ public class UserData implements Serializable {
 			}
 		}
 		this.total_distance_miles = this.total_distance_km * this.conv_km_miles;
-		if (this.current_weight == null || this.current_weight.compareTo("") == 0 ||
-			this.height == null || this.height.compareTo("") == 0 ||
-			this.hip_circumference == null || this.hip_circumference.compareTo("") == 0 ||
-			this.current_fat == null || this.current_fat.compareTo("") == 0 ||
-			this.target_weight == null || this.target_weight.compareTo("") == 0 ||
-			this.target_fat == null || this.target_fat.compareTo("") == 0 ||
-			this.gender == null || this.gender.compareTo("") == 0 ||
-			this.email == null || this.email.compareTo("") == 0) {
-			return (-1);
-		}
 		writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
 		if ((this.created != null) && !(this.created.compareTo("0") == 0) && !(this.created.compareTo("1") == 0)) {
 			try {
@@ -153,26 +149,23 @@ public class UserData implements Serializable {
 		}
 		try {
 			writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-			if (this.current_weight != null && this.current_weight.length() > 2) {
+			if (this.current_weight_v <= 0 && this.current_weight != null && this.current_weight.length() > 2) {
 				this.current_weight_v = Double.parseDouble(this.current_weight);
 			}
-			if (this.height != null && this.height.length() > 2) {
+			if (this.height_v <= 0 && this.height != null && this.height.length() > 2) {
 				this.height_v = Double.parseDouble(this.height);
 			}
-			if (this.hip_circumference != null && this.hip_circumference.length() > 2) {
+			if (this.hip_circumference_v <= 0 && this.hip_circumference != null && this.hip_circumference.length() > 2) {
 				this.hip_circumference_v = Double.parseDouble(this.hip_circumference);
 			}
-			if (this.current_fat != null && this.current_fat.length() > 2) {
+			if (this.current_fat_v <= 0 && this.current_fat != null && this.current_fat.length() > 2) {
 				this.current_fat_v = Double.parseDouble(this.current_fat);
 			}
-			if (this.target_weight != null && this.target_weight.length() > 2) {
+			if (this.target_weight_v <= 0 && this.target_weight != null && this.target_weight.length() > 2) {
 				this.target_weight_v = Double.parseDouble(this.target_weight);
 			}
-			if (this.target_fat != null && this.target_fat.length() > 2) {
+			if (this.target_fat_v <= 0 && this.target_fat != null && this.target_fat.length() > 2) {
 				this.target_fat_v = Double.parseDouble(this.target_fat);
-			}
-			if (this.uid != null && this.uid.length() > 1) {
-				this.uid_v = Integer.parseInt(this.uid);
 			}
 		} catch (NumberFormatException nfe) {
 			writeLog("YES, GOT AN EXCEPTION: " + nfe.getMessage());
@@ -185,7 +178,7 @@ public class UserData implements Serializable {
 
 		/*For males: BMR = (13.75 x WKG) + (5 x HC) - (6.76 x age) + 66
 			For females: BMR = (9.56 x WKG) + (1.85 x HC) - (4.68 x age) + 655 */
-		if (this.gender.compareToIgnoreCase("male") == 0) {
+		if (this.gender != null && this.gender.compareToIgnoreCase("male") == 0) {
 			this.bmr = 13.75 * this.current_weight_v + 5 * this.height_v - (6.76 * this.age) + 66;
 		} else {
 			this.bmr = 9.56 * this.current_weight_v + 1.85 * this.height_v - (4.68 * this.age) + 655;
@@ -224,9 +217,6 @@ public class UserData implements Serializable {
 		For VO2max < 44 mL•kg-1•min-1:
 		CFF = 1.07
 		 */
-		if (this.vo2max >= 56.00) {
-			this.cff = 1.00;
-		}
 		if (this.vo2max >= 54.00 && this.vo2max < 56.00) {
 			this.cff = 1.01;
 		}
@@ -245,9 +235,10 @@ public class UserData implements Serializable {
 		if (this.vo2max >= 44.00 && this.vo2max < 46.00) {
 			this.cff = 1.06;
 		}
-		if (this.vo2max < 44.00) {
+		if (this.vo2max >= 44.00 && this.vo2max < 44.00) {
 			this.cff = 1.07;
 		}
+		writeLog(String.format(Locale.CANADA, "UserData: getValues(): this.cff: %f", this.cff));
 		if (this.age > this.minimum_age) {
 			this.maximum_hr = (int) (208 - (0.7 * this.age));
 			this.target_hr_light = 0.35 * this.maximum_hr;
@@ -255,6 +246,9 @@ public class UserData implements Serializable {
 			this.target_hr_heavy = 0.7 * this.maximum_hr;
 			this.target_hr_very_heavy = 0.9 * this.maximum_hr;
 		}
+		writeLog(String.format(Locale.CANADA, "UserData: getValues(): this.age: %d", this.age));
+		writeLog(String.format(Locale.CANADA, "UserData: getValues(): this.maximum_hr: %f", this.maximum_hr));
+
 		return 0;
 	}
 
@@ -263,7 +257,7 @@ public class UserData implements Serializable {
 		try {
 			jsonuserdata = new JSONObject("{\"key\":\"data\"}");
 			jsonuserdata.put("uid_v", this.getUid_v());
-			jsonuserdata.put ("uid", this.getUid ());
+			jsonuserdata.put("uid", this.getUid());
 			jsonuserdata.put("full_name", this.getFull_name());
 			jsonuserdata.put("first_name", this.getFirst_name());
 			jsonuserdata.put("last_name", this.getLast_name());
@@ -301,8 +295,8 @@ public class UserData implements Serializable {
 				returnval = -1;
 			}
 			if (!jsonuserdata.isNull("uid") && jsonuserdata.get("uid") instanceof String) {
-				this.uid= jsonuserdata.getString("uid");
-				writeLog (String.format (Locale.US, "UserData: writeJSON: received: this.uid: %s", this.uid));
+				this.uid = jsonuserdata.getString("uid");
+				writeLog(String.format(Locale.US, "UserData: writeJSON: received: this.uid: %s", this.uid));
 			} else {
 				returnval = -1;
 			}
@@ -589,8 +583,8 @@ public class UserData implements Serializable {
 
 	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
 		this.full_name = (String) in.readObject();
-		this.first_name= (String) in.readObject();
-		this.last_name= (String) in.readObject();
+		this.first_name = (String) in.readObject();
+		this.last_name = (String) in.readObject();
 		this.birthday = (String) in.readObject();
 		this.gender = (String) in.readObject();
 		this.height = (String) in.readObject();
@@ -600,10 +594,10 @@ public class UserData implements Serializable {
 		this.target_weight = (String) in.readObject();
 		this.target_fat = (String) in.readObject();
 		this.email = (String) in.readObject();
-		this.password= (String) in.readObject();
-		this.metric= (String) in.readObject();
+		this.password = (String) in.readObject();
+		this.metric = (String) in.readObject();
 		this.uid = (String) in.readObject();
-		this.idToken= (String) in.readObject();
+		this.idToken = (String) in.readObject();
 		this.status = (String) in.readObject();
 		this.created = (String) in.readObject();
 		this.created_at = (String) in.readObject();
@@ -668,32 +662,32 @@ public class UserData implements Serializable {
 		status = null;
 		created = null;
 		created = null;
-		height_v = -1;
-		hip_circumference_v = -1;
-		current_weight_v = -1;
-		current_fat_v = -1;
-		target_weight_v = -1;
-		target_fat_v = -1;
-		height_v_imperial = -1;
-		hip_circumference_v_imperial = -1;
-		current_weight_v_imperial = -1;
-		target_weight_v_imperial = -1;
+		height_v = 0;
+		hip_circumference_v = 0;
+		current_weight_v = 0;
+		current_fat_v = 0;
+		target_weight_v = 0;
+		target_fat_v = 0;
+		height_v_imperial = 0;
+		hip_circumference_v_imperial = 0;
+		current_weight_v_imperial = 0;
+		target_weight_v_imperial = 0;
 		birthday_date = new Date();
-		age = -1;
-		vo2max = -1;
-		cff = -1;
-		bmr = -1;
-		rmr = -1;
-		bmi = -1;
-		bai = -1;
-		rhr_state = -1;
-		hr_reading = -1;
-		current_hr = -1;        // current reading of heart rate
-		last_hr = -1;           // last reading of heart rate
-		resting_hr = -1;        // resting heart rate
-		hr_reserve = -1;        // heart rate reserve
-		maximum_hr = -1;        // maximum heart rate.
-		recovery_hr = -1;       // recovery heart rate.
+		age = 0;
+		vo2max = 0;
+		cff = 0;
+		bmr = 0;
+		rmr = 0;
+		bmi = 0;
+		bai = 0;
+		rhr_state = 0;
+		hr_reading = 0;
+		current_hr = 0;        // current reading of heart rate
+		last_hr = 0;           // last reading of heart rate
+		resting_hr = 0;        // resting heart rate
+		hr_reserve = 0;        // heart rate reserve
+		maximum_hr = 0;        // maximum heart rate.
+		recovery_hr = 0;       // recovery heart rate.
 		total_distance_km = 0;
 		total_distance_miles = 0;
 		total_calories = 0;
