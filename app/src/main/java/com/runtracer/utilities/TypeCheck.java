@@ -19,13 +19,17 @@ public class TypeCheck {
 	}
 
 	public static boolean isNumber(String str) {
-		int size = str.length();
-		for (int i = 0; i < size; i++) {
-			Character cchar = str.charAt(i);
-			if (!Character.isDigit(cchar) && (cchar != '.') && (cchar != ',')) {
-				return false;
+		if (str!=null && str.length()>0) {
+			int size = str.length();
+			for (int i = 0; i < size; i++) {
+				Character cchar = str.charAt(i);
+				if (!Character.isDigit(cchar) && (cchar != '.') && (cchar != ',')) {
+					return false;
+				}
 			}
+			return true;
+		} else {
+			return false;
 		}
-		return size > 0;
 	}
 }

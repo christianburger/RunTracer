@@ -9,6 +9,7 @@ import android.util.Base64;
 import android.util.Log;
 
 import com.runtracer.MainActivity;
+import com.runtracer.sqlitedb.SqliteHandler;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,6 +49,7 @@ public class ServerDataService extends IntentService {
 	private static DataBaseExchange localDbExchange;
 
 	private int attempts;
+	private SqliteHandler sqliteHandler;
 
 	public ServerDataService() {
 		super("ServerDataService");
@@ -95,6 +97,7 @@ public class ServerDataService extends IntentService {
 	@Override
 	protected void onHandleIntent(Intent intent) {
 		String hash;
+		this.sqliteHandler= MainActivity.sqliteHandler;
 		if (intent != null) {
 			try {
 				final String action = intent.getAction();

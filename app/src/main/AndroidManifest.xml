@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest package="com.runtracer"
           xmlns:android="http://schemas.android.com/apk/res/android">
+
 	<uses-feature
 		android:name="android.hardware.bluetooth_le"
 		android:required="true"/>
+
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 	<uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS"/>
@@ -17,17 +19,18 @@
 	<uses-permission android:name="android.permission.GET_ACCOUNTS"/>
 	<uses-permission android:name="android.permission.READ_PROFILE"/>
 	<uses-permission android:name="android.permission.READ_CONTACTS"/>
+
 	<application
 		android:allowBackup="true"
+		android:fullBackupContent="true"
 		android:icon="@mipmap/ic_launcher"
 		android:label="@string/app_name"
-		android:theme="@style/AppTheme"
-		android:fullBackupContent="true">
+		android:theme="@style/AppTheme">
 		<activity
 			android:name=".MainActivity"
 			android:label="@string/title_activity_main"
-			android:screenOrientation="portrait"
-			android:launchMode="singleInstance">
+			android:launchMode="singleInstance"
+			android:screenOrientation="portrait">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>
 			</intent-filter>
@@ -35,9 +38,9 @@
 		<activity
 			android:name=".RunActivity"
 			android:label="@string/title_activity_run"
+			android:launchMode="singleInstance"
 			android:parentActivityName=".MainActivity"
 			android:screenOrientation="portrait"
-			android:launchMode="singleInstance"
 			android:windowSoftInputMode="stateHidden">
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
@@ -46,39 +49,42 @@
 		<activity
 			android:name=".DeviceScanActivity"
 			android:label="@string/title_activity_device_scan_activity"
+			android:launchMode="singleInstance"
 			android:parentActivityName=".MainActivity"
 			android:screenOrientation="portrait"
-			android:launchMode="singleInstance"
 			android:theme="@style/RunTracerStyleDialog"
 			android:windowSoftInputMode="stateHidden">
 		</activity>
+
 		<service
 			android:name=".services.BluetoothLeService"
 			android:enabled="true"/>
+
 		<meta-data
 			android:name="com.google.android.gms.version"
 			android:value="@integer/google_play_services_version"/>
+
 		<activity
 			android:name=".NewUserActivity"
 			android:label="@string/title_activity_new_user"
+			android:launchMode="singleInstance"
 			android:parentActivityName=".MainActivity"
 			android:screenOrientation="portrait"
-			android:launchMode="singleInstance"
 			android:windowSoftInputMode="stateAlwaysVisible|adjustResize">
 		</activity>
 		<activity
 			android:name=".ProfileActivity"
 			android:label="@string/title_activity_profile"
+			android:launchMode="singleInstance"
 			android:parentActivityName=".MainActivity"
 			android:screenOrientation="portrait"
-			android:launchMode="singleInstance"
 			android:windowSoftInputMode="stateAlwaysVisible|adjustResize">
 		</activity>
 		<activity
 			android:name=".LoginActivity"
 			android:label="@string/title_activity_login"
-			android:parentActivityName=".MainActivity"
 			android:launchMode="singleInstance"
+			android:parentActivityName=".MainActivity"
 			android:theme="@style/RunTracerStyleDialog"
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data
@@ -88,8 +94,8 @@
 		<activity
 			android:name=".ActivitiesActivity"
 			android:label="@string/title_activity_activities"
-			android:parentActivityName=".MainActivity"
 			android:launchMode="singleInstance"
+			android:parentActivityName=".MainActivity"
 			android:theme="@style/AppTheme.NoActionBar">
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
@@ -98,8 +104,8 @@
 		<activity
 			android:name=".About"
 			android:label="@string/title_activity_about"
-			android:parentActivityName=".MainActivity"
 			android:launchMode="singleInstance"
+			android:parentActivityName=".MainActivity"
 			android:screenOrientation="portrait"
 			android:theme="@style/AppTheme.NoActionBar">
 			<meta-data
@@ -109,8 +115,8 @@
 		<activity
 			android:name=".RunChartActivity"
 			android:label="@string/title_activity_run_chart"
-			android:parentActivityName=".ActivitiesActivity"
 			android:launchMode="singleInstance"
+			android:parentActivityName=".ActivitiesActivity"
 			android:theme="@style/AppTheme.NoActionBar">
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
@@ -119,6 +125,7 @@
 		<activity android:name=".SplashScreen">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>
+
 				<category android:name="android.intent.category.LAUNCHER"/>
 			</intent-filter>
 		</activity>
@@ -127,4 +134,5 @@
 			android:exported="false">
 		</service>
 	</application>
+
 </manifest>

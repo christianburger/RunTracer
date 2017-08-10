@@ -21,6 +21,7 @@
       <w>dataok</w>
       <w>dataset</w>
       <w>datenow</w>
+      <w>dbgidx</w>
       <w>firebase</w>
       <w>gpsdistance</w>
       <w>gpsspeed</w>
@@ -56,6 +57,8 @@
       <w>stringtoprint</w>
       <w>thismonthcomparedate</w>
       <w>threadmill</w>
+      <w>unsynched</w>
+      <w>unsynchedid</w>
       <w>userdatafile</w>
       <w>webview</w>
     </words>

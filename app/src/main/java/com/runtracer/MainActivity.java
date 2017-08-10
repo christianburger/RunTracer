@@ -62,6 +62,7 @@ import com.runtracer.sqlitedb.SqliteHandler;
 import com.runtracer.utilities.PrintValue;
 import com.runtracer.utilities.TypeCheck;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int MAX_ATTEMPTS = 10;
 	private static final String TAG = "runtracer";
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
+
 	public static DataBaseExchange dbExchange;
 	public static String lastHash = null;
 	private static SimpleOAuth2Token simpleOAuth2Token;
@@ -123,7 +125,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int change_user_data = 1003;
 	private static final int auth_user = 1004;
 	private static final int send_run_data = 1005;
-	private static final int get_run_ids = 1006;
+	private static final int sync_command = 1006;
 	private static final int get_run_info = 1007;
 	private static final int get_all_run_info = 1008;
 
@@ -652,7 +654,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		}
 	}
 
-
 	private void createNewUser() {
 		try {
 			if (newUser != null) {
@@ -691,6 +692,66 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		} catch (InterruptedException | MalformedURLException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void syncRunData() {
+		try {
+			ArrayList currentRuns = sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid);
+			writeLog(String.format(Locale.US, "syncRunData: currentRuns: \n>> %s <<\n", currentRuns));
+			JSONObject jsonRunDataList = new JSONObject("{\"idx\":\"runid\"}");
+			int noruns = 0;
+			for (Object runid : currentRuns) {
+				if (runid instanceof String) {
+					String idx = String.format(Locale.CANADA, "%d", noruns++);
+					jsonRunDataList.put((String) runid, idx);
+				}
+			}
+			writeLog(String.format(Locale.US, "syncRunData:jsonRunDataList %s", jsonRunDataList));
+			if (noruns > 0 && isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.101/rundata/sync/" + user_bio.getUid()));
+				dbExchange.setJson_data_in(jsonRunDataList);
+				dbExchange.setCommand("sync_command");
+				dbExchange.setMethod("POST");
+				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				String hash = dbExchange.getHash();
+				available.release();
+				writeLog(String.format(Locale.US, "changeUserData: json_data_in: %s", dbExchange.getJson_data_in()));
+				sendServerDataServiceRequest(hash);
+			}
+		} catch (InterruptedException | MalformedURLException | JSONException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private boolean sendRunData(ArrayList<Long> runDataList) {
+		writeLog("MainActivity: sendRunData() for : " + runDataList);
+		try {
+			for (long runid : runDataList) {
+				if (isServerReady()) {
+					available.acquire();
+					dbExchange.clear();
+					dbExchange.setUrl(new URL("http://192.168.1.101:/rundata/" + user_bio.getUid()));
+					dbExchange.setCommand("send_run_data");
+					dbExchange.setMethod("POST");
+					dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
+					dbExchange.setGrant_type(null);
+					dbExchange.setClient_id(null);
+					dbExchange.setClient_secret(null);
+					dbExchange.setJson_data_in(sqliteHandler.getRunData(runid).toJSON());
+					String hash = dbExchange.getHash();
+					available.release();
+					sendServerDataServiceRequest(hash);
+				}
+			}
+		} catch (MalformedURLException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return true;
 	}
 
 	private int getAllRunInfo() {
@@ -842,6 +903,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			}
 		}
 		if (requestCode == RUN_USER_DATA && resultCode == RESULT_OK && mIsAuthenticated) {
+			syncRunData();
 			updateUI();
 		}
 		if (requestCode == ACTIVITIES_DATA) {
@@ -1224,6 +1286,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						writeLog(String.format(Locale.US, "MainActivity: processResponse: sender: get_user_data: updating UI: metric: %s", user_bio.getMetric()));
 						mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
 						updateUI();
+						syncRunData();
 						break;
 
 					case send_user_data:
@@ -1247,9 +1310,53 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 							}
 						}
 						break;
+
+					case sync_command:
+						ArrayList<Long> unsynched = new ArrayList<>();
+						JSONObject jsonSyncResponse = dbEx.getJson_data_out();
+						if (jsonSyncResponse != null) {
+							writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: %s", jsonSyncResponse));
+							writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: jsonSyncResponse.has(\"missing\"): %b", jsonSyncResponse.has("missing")));
+							if (jsonSyncResponse.has("missing") && !jsonSyncResponse.isNull("missing")) {
+								Object missingObject = jsonSyncResponse.get("missing");
+								writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: missingObject.getClass(): %s", missingObject.getClass()));
+								if (missingObject instanceof org.json.JSONArray) {
+									JSONArray jsonArray = (JSONArray) missingObject;
+									for (int idx = 0; idx < jsonArray.length(); idx++) {
+										Object object = jsonArray.get(idx);
+										writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: object.getClass(): %s", object.getClass()));
+										if (object instanceof Long) {
+											writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: adding: %d to unsynched", (long) object));
+											unsynched.add((long) object);
+										}
+									}
+								}
+							}
+							if (jsonSyncResponse.has("rundata") && !jsonSyncResponse.isNull("rundata")) {
+								Object rundata = jsonSyncResponse.get("rundata");
+								writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: receiving rundata: %s", rundata.getClass()));
+								if (rundata instanceof org.json.JSONArray) {
+									JSONArray jsonArray = (JSONArray) rundata;
+									for (int idx = 0; idx < jsonArray.length(); idx++) {
+										Object object = jsonArray.get(idx);
+										writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: object.getClass(): %s", object.getClass()));
+										if (object instanceof JSONObject) {
+											writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: adding json: %s to SQLite.", ((JSONObject)object)));
+											sqliteHandler.addRunSummary(((JSONObject)object));
+										}
+									}
+								}
+							}
+						}
+						sendRunData(unsynched);
+						break;
+
 					default:
 				}
-			} catch (CloneNotSupportedException | JSONException e) {
+			} catch (CloneNotSupportedException |
+				JSONException e)
+
+			{
 				e.printStackTrace();
 			}
 		}
