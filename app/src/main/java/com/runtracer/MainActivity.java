@@ -731,26 +731,30 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	private boolean sendRunData(ArrayList<Long> runDataList) {
+		JSONArray data = new JSONArray();
+		JSONObject sendJSON= new JSONObject();
 		writeLog("MainActivity: sendRunData() for : " + runDataList);
 		try {
 			for (long runid : runDataList) {
-				if (isServerReady()) {
-					available.acquire();
-					dbExchange.clear();
-					dbExchange.setUrl(new URL("http://192.168.1.101:/rundata/" + user_bio.getUid()));
-					dbExchange.setCommand("send_run_data");
-					dbExchange.setMethod("POST");
-					dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
-					dbExchange.setGrant_type(null);
-					dbExchange.setClient_id(null);
-					dbExchange.setClient_secret(null);
-					dbExchange.setJson_data_in(sqliteHandler.getRunData(runid).toJSON());
-					String hash = dbExchange.getHash();
-					available.release();
-					sendServerDataServiceRequest(hash);
-				}
+				data.put(sqliteHandler.getRunData(runid).toJSON());
 			}
-		} catch (MalformedURLException | InterruptedException e) {
+			sendJSON.put("rundata", data);
+			if (isServerReady()) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.101:/rundata/" + user_bio.getUid()));
+				dbExchange.setCommand("send_run_data");
+				dbExchange.setMethod("POST");
+				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				dbExchange.setJson_data_in(sendJSON);
+				String hash = dbExchange.getHash();
+				available.release();
+				sendServerDataServiceRequest(hash);
+			}
+		} catch (MalformedURLException | InterruptedException | JSONException e) {
 			e.printStackTrace();
 		}
 		return true;
