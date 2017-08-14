@@ -26,7 +26,7 @@ public class RunInstant implements Serializable {
 	private final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
 
 	private String uid;
-	private long run_id_v;
+	private long runID;
 
 	private long ctime;
 	private double current_motion_speed_km_h_v;
@@ -47,13 +47,13 @@ public class RunInstant implements Serializable {
 				this.uid = json.getString("uid");
 			}
 			if (!json.isNull("runid") && json.get("runid") instanceof Long) {
-				this.run_id_v = json.getLong("runid");
+				this.runID= json.getLong("runid");
 			} else {
 				if (!json.isNull("runid") && json.get("runid") instanceof Integer) {
-					this.run_id_v = (long) json.getInt("runid");
+					this.runID = (long) json.getInt("runid");
 				} else {
 					if (!json.isNull("runid") && json.get("runid") instanceof String) {
-						this.run_id_v = Long.parseLong(json.getString("runid"));
+						this.runID = Long.parseLong(json.getString("runid"));
 					}
 				}
 			}
@@ -197,7 +197,7 @@ public class RunInstant implements Serializable {
 		try {
 			jsonRunData = new JSONObject("{\"key\":\"data\"}");
 			jsonRunData.put("uid", this.uid);
-			jsonRunData.put("runid", this.run_id_v);
+			jsonRunData.put("runid", this.runID);
 			jsonRunData.put("ctime", this.ctime);
 			jsonRunData.put("motion_speed", this.current_motion_speed_km_h_v);
 			jsonRunData.put("motion_distance", this.current_motion_distance_km_v);
@@ -219,7 +219,7 @@ public class RunInstant implements Serializable {
 
 	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
 		out.writeObject(this.uid);
-		out.writeObject(this.run_id_v);
+		out.writeObject(this.runID);
 		out.writeObject(this.ctime);
 		out.writeObject(this.current_motion_speed_km_h_v);
 		out.writeObject(this.current_motion_distance_km_v);
@@ -236,7 +236,7 @@ public class RunInstant implements Serializable {
 	private void readObject(java.io.ObjectInputStream in)
 		throws IOException, ClassNotFoundException {
 		this.uid= (String) in.readObject();
-		this.run_id_v= (long) in.readObject();
+		this.runID= (long) in.readObject();
 		this.ctime = (long) in.readObject();
 		this.current_motion_speed_km_h_v = (double) in.readObject();
 		this.current_motion_distance_km_v = (double) in.readObject();

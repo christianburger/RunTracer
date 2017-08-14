@@ -177,14 +177,20 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "  var materialOptions = {";
 		code += "\n";
 		code += "    chart: {";
+
 		code += "\n";
-		code += "      title: 'Average Temperatures and Daylight in Iceland Throughout the Year'";
+		code += String.format("			title: 'Details of your run on %s', ", run_data.getRun_date_start());
 		code += "\n";
+
 		code += "    },";
+
 		code += "\n";
-		code += "    width: 900,";
+		code += String.format(Locale.CANADA, "		width:%d,", c_width);
 		code += "\n";
-		code += "    height: 500,";
+		code += String.format(Locale.CANADA, "		height:%d,", c_height);
+		code += "\n";
+
+
 		code += "\n";
 		code += "    series: {";
 		code += "\n";

@@ -1001,7 +1001,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 				if (usedMemoryPercentage < 80) {
 					RunInstant runInstant = new RunInstant();
 					runInstant.setUid(user_bio.getUid());
-					runInstant.setRun_id_v(run_data.getRun_id_v());
+					runInstant.setRunID(run_data.getRun_id_v());
 					runInstant.setCtime(new Date().getTime());
 					runInstant.setCurrent_motion_speed_km_h_v(run_data.getAverage_speed_km_h_v());
 					runInstant.setCurrent_motion_distance_km_v(avg_distance);

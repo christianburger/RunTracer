@@ -637,7 +637,7 @@ public class SqliteHandler extends SQLiteOpenHelper {
 						RunInstant check = new RunInstant();
 						check = check.fromJSON(runInstantJSON);
 						runinstants.add(check);
-						writeLog("SqliteHandler: getRunInstants adding: run_id: " + check.getRun_id_v() + " ctime: " + check.getCtime() + " runinstants.size(): " + runinstants.size());
+						writeLog("SqliteHandler: getRunInstants adding: run_id: " + check.getRunID() + " ctime: " + check.getCtime() + " runinstants.size(): " + runinstants.size());
 					}
 				}
 			} catch (JSONException e) {

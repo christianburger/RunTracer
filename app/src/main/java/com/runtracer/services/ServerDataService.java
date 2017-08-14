@@ -43,7 +43,7 @@ public class ServerDataService extends IntentService {
 	private static final String EXTRA_PARAM1 = "com.runtracer.extra.PARAM1";
 	private static final String EXTRA_PARAM2 = "com.runtracer.extra.PARAM2";
 
-	private static final String TAG = "runtracer";
+	private static final String TAG = "dataserver";
 	private static final int NETWORK_TIMEOUT = 8000;
 
 	private static DataBaseExchange localDbExchange;
@@ -103,6 +103,7 @@ public class ServerDataService extends IntentService {
 				final String action = intent.getAction();
 				hash = intent.getStringExtra("hash");
 				writeLog(String.format("ServerDataService: localDbExchange received action: %s", action));
+				writeLog(String.format("ServerDataService: sqliteHandler.checkDataBase(): %b", sqliteHandler.checkDataBase()));
 				if (ACTION_QUERY_SERVER.equals(action)) {
 					writeLog(String.format("ServerDataService: localDbExchange received hash: %s", hash));
 					writeLog(String.format("ServerDataService: localDbExchange getHash(): %s", localDbExchange.getHash()));
@@ -171,6 +172,7 @@ public class ServerDataService extends IntentService {
 		int dbgidx = 0;
 		dbEx.getJson_data_in().put("json_size", json_sz);
 		HttpURLConnection httpConnection;
+		writeLog(String.format("ServerDataService: sqliteHandler.checkDataBase(): %b", sqliteHandler.checkDataBase()));
 		try {
 			assert dbEx.getUrl() != null;
 			httpConnection = (HttpURLConnection) dbEx.getUrl().openConnection();

@@ -53,6 +53,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.runtracer.model.RunInstant;
 import com.runtracer.model.UserData;
 import com.runtracer.services.BluetoothLeService;
 import com.runtracer.services.DataBaseExchange;
@@ -78,21 +79,24 @@ import java.util.concurrent.Semaphore;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener, OnCompleteListener<GetTokenResult> {
 
-	public static SqliteHandler sqliteHandler;
 
 	private static final boolean DEVELOPER_MODE = false;
 	public static final int minimum_age = 12;
 	public static final int MAX_AVAILABLE = 1;
 	private static final int MAX_ATTEMPTS = 10;
 	private static final String TAG = "runtracer";
+
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 
-	public static DataBaseExchange dbExchange;
-	public static String lastHash = null;
-	private static SimpleOAuth2Token simpleOAuth2Token;
+	public static SqliteHandler sqliteHandler;
+	public static volatile DataBaseExchange dbExchange;
+	public static volatile String lastHash = null;
+	private static volatile SimpleOAuth2Token simpleOAuth2Token;
 
-	public static UserData user_bio;
-	public static UserData newUser;
+	private volatile ArrayList<Long> unsynched = new ArrayList<>();
+
+	public static volatile UserData user_bio;
+	public static volatile UserData newUser;
 
 	private BluetoothLeService mBluetoothLeService;
 	private String mDeviceAddress;
@@ -119,15 +123,14 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int READY = 2;              // RHR Measuring state
 	private static final int ACQUIRED = 3;           // RHR Measuring state
 
-	//method signature for response at onPostExecute
+	//method signature for response processed at the client code in: onPostExecute
 	private static final int get_user_data = 1001;
 	private static final int send_user_data = 1002;
 	private static final int change_user_data = 1003;
 	private static final int auth_user = 1004;
 	private static final int send_run_data = 1005;
-	private static final int sync_command = 1006;
-	private static final int get_run_info = 1007;
-	private static final int get_all_run_info = 1008;
+	private static final int send_run_instant = 1006;
+	private static final int sync_command = 1007;
 
 	/* View to display current status (signed-in, signed-out, disconnected, etc) */
 	private TextView mStatus;
@@ -279,6 +282,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		updateUI();
 	}
 
+	//Activities
 	public void newRun() {
 		Task<String> instanceId = mFirebaseAnalytics.getAppInstanceId();
 		writeLog("starting newRun(), instanceId: " + instanceId);
@@ -542,7 +546,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				@Override
 				public void onComplete(@NonNull Task<AuthResult> task) {
 					writeLog("signInWithEmail:onComplete:" + task.isSuccessful());
-
 					// If sign in fails, display a message to the user. If sign in succeeds
 					// the auth state listener will be notified and logic to handle the
 					// signed in user can be handled in the listener.
@@ -553,7 +556,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				}
 			});
 	}
-
 
 	private boolean sendFirebaseToken() {
 		try {
@@ -707,7 +709,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				}
 			}
 			writeLog(String.format(Locale.US, "syncRunData:jsonRunDataList %s", jsonRunDataList));
-			if (noruns > 0 && isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
+			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
 				available.acquire();
 				dbExchange.clear();
 				dbExchange.setUrl(new URL("http://192.168.1.101/rundata/sync/" + user_bio.getUid()));
@@ -754,26 +756,45 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		return true;
 	}
 
-	private int getAllRunInfo() {
+	private boolean sendRunInstants(ArrayList<Long> runDataList) {
+		JSONArray runInstants = new JSONArray();
+		JSONObject dataSent = new JSONObject();
+		writeLog(String.format(Locale.CANADA, "MainActivity: sendRunInstants(runDataList: %s): STARTING ", runDataList));
 		try {
-			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
-				if (isServerReady()) {
-					available.acquire();
-					dbExchange.clear();
-					dbExchange.setUrl(new URL("http://192.168.1.101/run/get"));
-					dbExchange.setCommand("get_all_run_info");
-					dbExchange.getJson_data_in().put("uid", user_bio.getUid());
-					dbExchange.getJson_data_in().put("session_id", user_bio.getSession_id());
-					String hash = dbExchange.getHash();
-					available.release();
-					sendServerDataServiceRequest(hash);
-					writeLog("getAllRunInfo...");
+			for (long runId : runDataList) {
+				writeLog(String.format(Locale.CANADA, "MainActivity: sendRunInstants(): LOOPING: runId: %d", runId));
+				writeLog(String.format(Locale.CANADA, "MainActivity: sendRunInstants(): LOOPING: runId: %d", runId));
+				ArrayList<RunInstant> results = sqliteHandler.getRunInstants(runId);
+				for (RunInstant runInstant : results) {
+					writeLog(String.format(Locale.CANADA, "MainActivity: sendRunInstants(): LOOPING: runInstant: %d", runInstant.getCtime()));
+					runInstants.put(runInstant.toJSON());
+					//unsynched.remove(runId);
 				}
 			}
-		} catch (InterruptedException | MalformedURLException | JSONException e) {
+			dataSent.put("runinstants", runInstants);
+			if (isServerReady()) {
+				available.acquire();
+				dbExchange.clear();
+				dbExchange.setUrl(new URL("http://192.168.1.101:/runinstants/" + user_bio.getUid()));
+				dbExchange.setCommand("send_run_data");
+				dbExchange.setMethod("POST");
+				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
+				dbExchange.setGrant_type(null);
+				dbExchange.setClient_id(null);
+				dbExchange.setClient_secret(null);
+				dbExchange.setJson_data_in(dataSent);
+				String hash = dbExchange.getHash();
+				available.release();
+				writeLog(String.format(Locale.CANADA, "MainActivity: sendRunInstant(runDataList: { %s }) SENDING: dataSent: %s", runDataList, dataSent));
+				sendServerDataServiceRequest(hash);
+			} else {
+				writeLog("MainActivity: sendRunInstants(runid: %d): SERVER NOT READY...");
+			}
+		} catch (MalformedURLException | InterruptedException | JSONException e) {
+			writeLog(String.format(Locale.CANADA, "MainActivity: sendRunInstants(): EXCEPTION: %s", e.toString()));
 			e.printStackTrace();
 		}
-		return 0;
+		return true;
 	}
 
 	@Override
@@ -1285,8 +1306,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						user_bio.getValues();
 						writeLog(String.format(Locale.US, "MainActivity: processResponse: sender: get_user_data: updating UI: metric: %s", user_bio.getMetric()));
 						mMetricSystem.setChecked(user_bio.getMetric().compareToIgnoreCase("metric") == 0);
-						updateUI();
 						syncRunData();
+						updateUI();
 						break;
 
 					case send_user_data:
@@ -1312,7 +1333,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 						break;
 
 					case sync_command:
-						ArrayList<Long> unsynched = new ArrayList<>();
 						JSONObject jsonSyncResponse = dbEx.getJson_data_out();
 						if (jsonSyncResponse != null) {
 							writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: %s", jsonSyncResponse));
@@ -1341,14 +1361,37 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 										Object object = jsonArray.get(idx);
 										writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: object.getClass(): %s", object.getClass()));
 										if (object instanceof JSONObject) {
-											writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: adding json: %s to SQLite.", ((JSONObject)object)));
-											sqliteHandler.addRunSummary(((JSONObject)object));
+											writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: adding json: %s to SQLite.", ((JSONObject) object)));
+											sqliteHandler.addRunSummary(((JSONObject) object));
+										}
+									}
+								}
+							}
+							if (jsonSyncResponse.has("runinstants") && !jsonSyncResponse.isNull("runinstants")) {
+								Object runinstants = jsonSyncResponse.get("runinstants");
+								writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: receiving runinstants: %s", runinstants.getClass()));
+								if (runinstants instanceof org.json.JSONArray) {
+									JSONArray jsonArray = (JSONArray) runinstants;
+									for (int idx = 0; idx < jsonArray.length(); idx++) {
+										Object object = jsonArray.get(idx);
+										writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: object.getClass(): %s", object.getClass()));
+										if (object instanceof JSONObject) {
+											writeLog(String.format(Locale.US, "MainActivity: ResponseReceiver: processResponse(...): sync_command: adding json: %s to SQLite.", ((JSONObject) object)));
+											sqliteHandler.addRunInstant(((JSONObject) object));
 										}
 									}
 								}
 							}
 						}
 						sendRunData(unsynched);
+						updateStats();
+						updateUI();
+						break;
+
+					case send_run_data:
+						sendRunInstants(unsynched);
+						updateStats();
+						updateUI();
 						break;
 
 					default:
