@@ -5,90 +5,99 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
 	android:background="@android:color/white"
 	android:fitsSystemWindows="true"
 	android:nestedScrollingEnabled="true"
 	tools:context="com.runtracer.ActivitiesActivity">
 
-	<android.support.design.widget.AppBarLayout
-		android:id="@+id/app_bar"
+
+	<RelativeLayout
+		android:id="@+id/activitySummary"
+		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:layout_width="match_parent"
-		android:layout_height="@dimen/app_bar_height"
-		android:fitsSystemWindows="true"
-		android:theme="@style/AppTheme.AppBarOverlay"
-		app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
-		<android.support.design.widget.CollapsingToolbarLayout
-			android:id="@+id/toolbar_layout"
-			style="@android:style/Holo.ButtonBar"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:layout_gravity="fill_vertical"
-			android:layout_marginBottom="?attr/actionBarSize"
-			android:fitsSystemWindows="true"
-			android:focusable="false"
-			android:minHeight="80sp"
-			android:nestedScrollingEnabled="true"
-			app:contentScrim="?attr/colorPrimary"
-			app:layout_scrollFlags="scroll|exitUntilCollapsed">
-
-			<android.support.v7.widget.Toolbar
-				android:id="@+id/toolbar"
-				android:layout_width="match_parent"
-				android:layout_height="40dp"
-				app:layout_collapseMode="pin"
-				app:popupTheme="@style/AppTheme.PopupOverlay"/>
-
-			<TextView
-				android:id="@+id/activity_summary"
-				style="@android:style/DeviceDefault.ButtonBar"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_margin="@dimen/text_margin"
-				android:width="400sp"
-				android:autoText="false"
-				android:lines="12"
-				android:nestedScrollingEnabled="true"
-				android:text="@string/large_text"
-				app:layout_anchor="@id/toolbar"
-				app:layout_anchorGravity="bottom|end"/>
-
-		</android.support.design.widget.CollapsingToolbarLayout>
-	</android.support.design.widget.AppBarLayout>
-
-	<android.support.design.widget.FloatingActionButton
-		android:id="@+id/fab"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_margin="@dimen/fab_margin"
-		android:src="@android:drawable/ic_dialog_email"
-		app:layout_anchor="@id/toolbar"
-		app:layout_anchorGravity="bottom|right|start"/>
-
-	<android.support.design.widget.FloatingActionButton
-		android:id="@+id/fab_show_chart"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_margin="@dimen/fab_margin"
-		android:src="@android:drawable/arrow_up_float"
-		app:layout_anchor="@id/toolbar"
-		app:layout_anchorGravity="bottom|right|end"/>
-
-	<ExpandableListView
-		android:id="@+id/activities_list1"
-		style="@android:style/Widget.DeviceDefault.Light"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:background="@android:color/transparent"
-		android:footerDividersEnabled="true"
-		android:headerDividersEnabled="true"
+		android:layout_height="match_parent"
 		android:nestedScrollingEnabled="true"
-		android:paddingBottom="80dp"
-		android:paddingTop="@dimen/app_bar_height"
-		android:smoothScrollbar="false"
-		app:layout_anchor="@id/app_bar"
-		app:layout_anchorGravity="bottom|right|end"/>
+		android:theme="@style/AppTheme"
+		android:visibility="visible">
 
+		<android.support.design.widget.AppBarLayout
+			android:id="@+id/app_bar"
+			android:layout_width="wrap_content"
+			android:layout_height="200dp"
+			android:fitsSystemWindows="true"
+			android:theme="@style/AppTheme.AppBarOverlay"
+			app:expanded="true"
+			app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+			<android.support.design.widget.CollapsingToolbarLayout
+				android:id="@+id/toolbar_layout"
+				style="@android:style/Holo.ButtonBar"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:fitsSystemWindows="true"
+				android:focusable="false"
+				android:nestedScrollingEnabled="true"
+				>
+
+				<android.support.v7.widget.Toolbar
+					android:id="@+id/toolbar"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					app:layout_collapseMode="pin"
+					app:popupTheme="@style/AppTheme.PopupOverlay"/>
+
+				<TextView
+					android:id="@+id/activity_summary"
+					style="@android:style/DeviceDefault.ButtonBar"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginLeft="20dp"
+					android:autoText="false"
+					android:lines="20"
+					android:nestedScrollingEnabled="false"
+					android:textSize="18sp"/>
+
+			</android.support.design.widget.CollapsingToolbarLayout>
+		</android.support.design.widget.AppBarLayout>
+
+
+		<ExpandableListView
+			android:id="@+id/activities_list1"
+			style="@android:style/Widget.DeviceDefault.Light"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_below="@id/app_bar"
+			android:layout_marginBottom="20dp"
+			android:background="@android:color/transparent"
+			android:footerDividersEnabled="true"
+			android:headerDividersEnabled="true"
+			android:nestedScrollingEnabled="true"
+			android:smoothScrollbar="false"
+			app:layout_anchor="@id/app_bar"
+			app:layout_anchorGravity="bottom|right|end"/>
+
+
+		<android.support.design.widget.FloatingActionButton
+			android:id="@+id/fab"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentBottom="true"
+			android:layout_alignParentRight="true"
+			android:layout_margin="@dimen/fab_margin"
+			android:layout_marginBottom="120dp"
+			android:src="@android:drawable/ic_dialog_email"/>
+
+		<android.support.design.widget.FloatingActionButton
+			android:id="@+id/fab_show_chart"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentBottom="true"
+			android:layout_margin="@dimen/fab_margin"
+			android:layout_marginBottom="120dp"
+			android:layout_toLeftOf="@id/fab"
+			android:src="@android:drawable/arrow_up_float"/>
+
+	</RelativeLayout>
 </android.support.design.widget.CoordinatorLayout>

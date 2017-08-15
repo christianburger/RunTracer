@@ -79,12 +79,14 @@ import java.util.concurrent.Semaphore;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener, SensorEventListener, GoogleApiClient.OnConnectionFailedListener, FirebaseAuth.AuthStateListener, OnCompleteListener<GetTokenResult> {
 
-
 	private static final boolean DEVELOPER_MODE = false;
 	public static final int minimum_age = 12;
 	public static final int MAX_AVAILABLE = 1;
 	private static final int MAX_ATTEMPTS = 10;
+
 	private static final String TAG = "runtracer";
+	//private static final String URL= "http://192.168.1.101";
+	private static final String URL= "http://appsynthetizer.com";
 
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 
@@ -562,7 +564,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady()) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101/user/firebase/update_token"));
+				dbExchange.setUrl(new URL(URL+"/user/firebase/update_token"));
 				dbExchange.setCommand("send_firebase_token");
 				dbExchange.setMethod("POST");
 				dbExchange.setGrant_type(null);
@@ -586,7 +588,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				available.acquire();
 				dbExchange.clear();
 				dbExchange.setMaxAttempts(12);
-				dbExchange.setUrl(new URL("http://192.168.1.101:8080/auth/oauth/token"));
+				dbExchange.setUrl(new URL(URL+":8080/auth/oauth/token"));
 				dbExchange.setCommand("get_token");
 				dbExchange.setGrant_type("client_credentials");
 				dbExchange.setMethod("POST");
@@ -611,7 +613,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady()) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101:/userdata/" + user_bio.getUid()));
+				dbExchange.setUrl(new URL(URL+"/userdata/" + user_bio.getUid()));
 				dbExchange.setCommand("get_user_info");
 				dbExchange.setMethod("POST");
 				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
@@ -636,7 +638,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101/userdata/update/" + user_bio.getUid()));
+				dbExchange.setUrl(new URL(URL+"/userdata/update/" + user_bio.getUid()));
 				dbExchange.setJson_data_in(user_bio.toJSON());
 				dbExchange.setCommand("change_user_info");
 				dbExchange.setMethod("POST");
@@ -678,7 +680,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				if (isServerReady()) {
 					available.acquire();
 					dbExchange.clear();
-					dbExchange.setUrl(new URL("http://192.168.1.101/user/create"));
+					dbExchange.setUrl(new URL(URL+"/user/create"));
 					dbExchange.setMethod("POST");
 					dbExchange.setGrant_type(null);
 					dbExchange.setClient_id(null);
@@ -712,7 +714,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady() && mIsFirebaseSignedIn && mIsAuthenticated) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101/rundata/sync/" + user_bio.getUid()));
+				dbExchange.setUrl(new URL(URL+"/rundata/sync/" + user_bio.getUid()));
 				dbExchange.setJson_data_in(jsonRunDataList);
 				dbExchange.setCommand("sync_command");
 				dbExchange.setMethod("POST");
@@ -732,7 +734,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 	private boolean sendRunData(ArrayList<Long> runDataList) {
 		JSONArray data = new JSONArray();
-		JSONObject sendJSON= new JSONObject();
+		JSONObject sendJSON = new JSONObject();
 		writeLog("MainActivity: sendRunData() for : " + runDataList);
 		try {
 			for (long runid : runDataList) {
@@ -742,7 +744,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady()) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101:/rundata/" + user_bio.getUid()));
+				dbExchange.setUrl(new URL(URL+"/rundata/" + user_bio.getUid()));
 				dbExchange.setCommand("send_run_data");
 				dbExchange.setMethod("POST");
 				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
@@ -779,7 +781,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 			if (isServerReady()) {
 				available.acquire();
 				dbExchange.clear();
-				dbExchange.setUrl(new URL("http://192.168.1.101:/runinstants/" + user_bio.getUid()));
+				dbExchange.setUrl(new URL(URL+"/runinstants/" + user_bio.getUid()));
 				dbExchange.setCommand("send_run_data");
 				dbExchange.setMethod("POST");
 				dbExchange.setSimpleOAuth2Token(simpleOAuth2Token);
@@ -1014,7 +1016,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				break;
 
 			case R.id.user_about_button:
-				if (isUpdated) {
+				if (mIsAuthenticated && user_bio!=null) {
 					this.aboutYou();
 				} else {
 					Snackbar.make(findViewById(android.R.id.content), "Profile not ready.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
@@ -1394,6 +1396,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 					case send_run_data:
 						sendRunInstants(unsynched);
+						updateStats();
+						updateUI();
+						break;
+
+					case send_run_instant:
 						updateStats();
 						updateUI();
 						break;

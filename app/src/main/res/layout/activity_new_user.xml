@@ -6,7 +6,7 @@
             android:minWidth="140sp">
 
 	<RelativeLayout
-		android:id="@+id/activity_new_vendor_layout"
+		android:id="@+id/activity_new_user_layout"
 		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"

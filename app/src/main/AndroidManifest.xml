@@ -95,8 +95,10 @@
 			android:name=".ActivitiesActivity"
 			android:label="@string/title_activity_activities"
 			android:launchMode="singleInstance"
+			android:screenOrientation="portrait"
 			android:parentActivityName=".MainActivity"
-			android:theme="@style/AppTheme.NoActionBar">
+			android:theme="@style/AppTheme.NoActionBar"
+			android:windowSoftInputMode="stateHidden">
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
 				android:value="com.runtracer.MainActivity"/>

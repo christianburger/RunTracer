@@ -1,17 +1,18 @@
 package com.runtracer;
+
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
 import android.util.Log;
-import android.view.Display;
 import android.view.View;
-import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.widget.ExpandableListView;
 import android.widget.TextView;
@@ -44,10 +45,13 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 
 	private ExpandableListView mActivitiesList;
 	private ExpandableListAdapter mActivityListAdapter;
+
+	private AppBarLayout mAppBarLayout;
+	private CollapsingToolbarLayout mCollapsingToolbar;
 	private Toolbar mToolbar;
 	private TextView mActivitySummary;
 
-	private Long selected_run_id;
+	private long selected_run_id;
 
 	List<String> listDataHeader;
 	HashMap<String, List<String>> listDataChild;
@@ -56,8 +60,6 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	private HashMap activityInfoMap;
 	private HashMap filteredActivityInfoMap;
 
-	private UserData user_data;
-
 	private SqliteHandler sqliteHandler;
 
 
@@ -65,21 +67,28 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_activities);
-		sqliteHandler= MainActivity.sqliteHandler;
+		this.setTitle(null);
+		sqliteHandler = MainActivity.sqliteHandler;
 		writeLog(String.format("ActivitiesActivity: onCreate(): sqlite size: %s", sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid).size()));
 		mEmail = (FloatingActionButton) findViewById(R.id.fab);
 		mEmail.setOnClickListener(this);
 		mShowChart = (FloatingActionButton) findViewById(R.id.fab_show_chart);
 		mShowChart.setOnClickListener(this);
+
+		mAppBarLayout = (AppBarLayout) findViewById(R.id.app_bar);
+		mCollapsingToolbar = (CollapsingToolbarLayout) findViewById(R.id.toolbar_layout);
+		mCollapsingToolbar.setTitle(null);
 		mToolbar = (Toolbar) findViewById(R.id.toolbar);
-		mToolbar.setTitle("Activity Details");
+		mToolbar.setTitle(null);
+		mToolbar.setSubtitle(null);
 		setSupportActionBar(mToolbar);
 		activityInfoMap = new HashMap<>();
 		filteredActivityInfoMap = new HashMap<>();
-		user_data = MainActivity.user_bio;
+		UserData user_data = MainActivity.user_bio;
 		listDataChildToRunIdCorrelation = new HashMap<>();
 		getActivities();
 		mActivitySummary = (TextView) findViewById(R.id.activity_summary);
+		mActivitySummary.setText(R.string.title_activity_activities);
 		mActivityListAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
 		mActivitiesList = (ExpandableListView) findViewById(R.id.activities_list1);
 		prepareListData();
@@ -111,42 +120,30 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 			public boolean onChildClick(ExpandableListView parent, View v, int groupPosition, int childPosition, long id) {
 				//Toast.makeText(getApplicationContext(), listDataHeader.get(groupPosition) + " : " + listDataChild.get(listDataHeader.get(groupPosition)).get(childPosition), Toast.LENGTH_SHORT).show();
 				//showActivity(listDataChild.get(listDataHeader.get(groupPosition)).get(childPosition));
-				showActivity((long)childPosition);
+				showActivity((long) childPosition);
 				return false;
 			}
 		});
-		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+		//getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 		updateStats();
 	}
 
 	public ActivitiesActivity() {
 	}
 
-	private int getScaleY(int pic_height) {
-		Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
-		int height = display.getHeight();
-		Double val;
-		val = (double) height / (double) pic_height;
-		val = val * 100d;
-		return val.intValue();
-	}
-
-	private int getScaleX(int pic_width) {
-		Display display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
-		int width = display.getWidth();
-		Double val;
-		val = (double) width / (double) pic_width;
-		val = val * 100d;
-		return val.intValue();
-	}
-
 	public boolean showActivity(long childposition) {
 		writeLog(String.format(Locale.US, "showActivity: received: %d", childposition));
-		if (!listDataChildToRunIdCorrelation.isEmpty() && listDataChildToRunIdCorrelation.containsKey(childposition) ) {
+		if (!listDataChildToRunIdCorrelation.isEmpty() && listDataChildToRunIdCorrelation.containsKey(childposition)) {
 			writeLog(String.format(Locale.US, "showActivity: before this.selected_run_id: %d", this.selected_run_id));
 			this.selected_run_id = listDataChildToRunIdCorrelation.get(childposition);
 			writeLog(String.format(Locale.US, "showActivity: after this.selected_run_id: %d", this.selected_run_id));
-			mActivitySummary.setText(String.format(Locale.US, "Run ID: %d", this.selected_run_id));
+			String info = "Selected Activity\n\n";
+			info += this.getActivityInfo(this.selected_run_id);
+			mActivitySummary.setText(info);
+			mAppBarLayout.setExpanded(false);
+			mAppBarLayout.setFitsSystemWindows(true);
+			mToolbar.setTitle(null);
+			mToolbar.setSubtitle(null);
 		} else {
 			return false;
 		}
@@ -154,13 +151,19 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	}
 
 	public String getActivityInfo(long ckey) {
-		String info = null;
-
+		String info = "";
 		if (filteredActivityInfoMap.containsKey(ckey)) {
+			info += String.format(Locale.CANADA, "\tRunID: \t%d", ckey);
 			RunData lrun;
 			lrun = (RunData) filteredActivityInfoMap.get(ckey);
 			lrun.getValues();
-			info = String.format(Locale.US, "%s\ndistance: %.2f \ncalories: %.2f", lrun.getRun_date_start(), lrun.getDistance_km_v(), lrun.getCalories_v_distance());
+			String duration;
+			long duration_v = (lrun.getRun_date_end_v().getTime() - lrun.getRun_date_start_v().getTime()) / 1000;
+			duration = String.format(Locale.CANADA, "%d s", duration_v);
+			info += String.format(Locale.US, "\n\tTime: \t%s", lrun.getRun_date_start());
+			info += String.format(Locale.US, "\n\tCalories: \t%.2f KCal ", lrun.getCalories_v_distance());
+			info += String.format(Locale.US, "\n\tDuration: \t%s", duration);
+			info += String.format(Locale.US, "\n\tDistance: %.2f Km ", lrun.getCalories_v_distance());
 		}
 		writeLog(String.format("getActivityInfo: %s", info));
 		return info;
@@ -172,37 +175,36 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	}
 
 	public int getActivities() {
-		activityInfoMap= new HashMap();
-		writeLog("getActivities: activityInfoMap.size(): "+ activityInfoMap.size());
-		if (sqliteHandler!=null) {
+		activityInfoMap = new HashMap();
+		writeLog("getActivities: activityInfoMap.size(): " + activityInfoMap.size());
+		if (sqliteHandler != null) {
 			ArrayList<String> dataset = sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid);
 			writeLog(String.format("getActivities: dataset: %s", dataset));
-			for (int i=0; i<dataset.size(); i++) {
-				String runid=dataset.get(i);
-				long runid_v= Long.parseLong(runid);
+			for (int i = 0; i < dataset.size(); i++) {
+				String runid = dataset.get(i);
+				long runid_v = Long.parseLong(runid);
 				writeLog(String.format(Locale.CANADA, "getActivities: runid: %s     runid_v: %d      i: %d", runid, runid_v, i));
 				RunData runData = sqliteHandler.getRunData(runid_v);
 				writeLog(String.format(Locale.CANADA, "getActivities: runData: : %s", runData));
-				if (runData!=null && runData.getRun_id_v() ==  runid_v) {
+				if (runData != null && runData.getRun_id_v() == runid_v) {
 					activityInfoMap.put(runid_v, runData);
 					writeLog(String.format(Locale.CANADA, "getActivities: ADDING to activityInfoMap.put(runid_v: %d, runData: %s", runid_v, runData));
 				}
 			}
 		}
 
-
 		List keys = (List<Long>) new ArrayList(activityInfoMap.keySet());
 		long ckey;
 		RunData lruninfo;
 		Iterator itk = keys.iterator();
 		for (; itk.hasNext(); ) {
-			ckey = (Long)itk.next();
+			ckey = (Long) itk.next();
 			writeLog(String.format(Locale.US, "activityInfoMap: ckey: %d", ckey));
-			lruninfo= sqliteHandler.getRunData(ckey);
+			lruninfo = sqliteHandler.getRunData(ckey);
 			writeLog(String.format("activityInfoMap: run_date_start: %s", lruninfo.getRun_date_start()));
 			writeLog(String.format("activityInfoMap: run_id: %s", lruninfo.getRun_id_v()));
 			writeLog(String.format("activityInfoMap: calories: %s", lruninfo.getCalories_v_distance()));
-			if (lruninfo.getRun_id_v()> 0) {
+			if (lruninfo.getRun_id_v() > 0) {
 				/*
 				SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.CANADA);
 				lruninfo.run_date_start_v= new Date();
@@ -248,10 +250,10 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 			if (filteredActivityInfoMap.containsKey(ckey)) {
 				lruninfo = (RunData) filteredActivityInfoMap.get(ckey);
 				writeLog(String.format(Locale.US, "filteredActivityInfoMap.get(%d): run_date_start: %s", ckey, lruninfo.getRun_date_start()));
-				if ((lruninfo.getRun_id_v()> 0)) {
+				if ((lruninfo.getRun_id_v() > 0)) {
 					String data_info = getActivityInfo(lruninfo.getRun_id_v());
 					allActivity.add(data_info);
-					long pos = (long)(allActivity.indexOf(data_info));
+					long pos = (long) (allActivity.indexOf(data_info));
 					listDataChildToRunIdCorrelation.put(pos, lruninfo.getRun_id_v());
 					try {
 						Calendar cdate = Calendar.getInstance();
@@ -260,7 +262,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 						//if(lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
 						if (lruninfo.getRun_date_start_v().after(format.parse(thismonthcomparedate))) {
 							//thisMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
-							thisMonth.add(getActivityInfo((int)lruninfo.getRun_id_v()));
+							thisMonth.add(getActivityInfo((int) lruninfo.getRun_id_v()));
 						}
 						if (lruninfo.getRun_date_start_v().after(format.parse(lastmonthcomparedate)) && lruninfo.getRun_date_start_v().before(format.parse(thismonthcomparedate))) {
 							//lastMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
@@ -331,13 +333,16 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	}
 
 	public void showRunChart() {
-		Intent intent = new Intent(this, RunChartActivity.class);
-		intent.putExtra("run_data", this.selected_run_id.toString());
-		startActivityForResult(intent, SHOW_CHART);
+		if (this.selected_run_id > 0) {
+			Intent intent = new Intent(this, RunChartActivity.class);
+			intent.putExtra("run_data", String.valueOf(this.selected_run_id));
+			startActivityForResult(intent, SHOW_CHART);
+		}
 	}
 
 	/**
 	 * Called when a view has been clicked.
+	 *
 	 * @param v The view that was clicked.
 	 */
 	@Override
