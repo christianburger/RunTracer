@@ -378,7 +378,6 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 		return matcher.matches();
 	}
 
-
 	private boolean isNameValid(String name) {
 		return name.length() > 4;
 	}
@@ -556,7 +555,7 @@ public class ProfileActivity extends AppCompatActivity implements OnDateSetListe
 						setResult(RESULT_OK, data);
 						this.finish();
 					} else {
-						writeLog("ProfileActivity: onClick ERRRROORRRROORRRRRORRRRORRRRROORRRROORRRR");
+						writeLog("ProfileActivity: onClick ERROR");
 					}
 				} catch (ParseException e) {
 					e.printStackTrace();

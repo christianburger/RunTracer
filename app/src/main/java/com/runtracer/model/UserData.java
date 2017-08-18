@@ -251,7 +251,6 @@ public class UserData implements Serializable {
 
 		return 0;
 	}
-
 	private JSONObject createJSON() {
 		JSONObject jsonuserdata = null;
 		try {
@@ -288,11 +287,22 @@ public class UserData implements Serializable {
 		int returnval = 0;
 		try {
 			returnval = 0;
-			if (!jsonuserdata.isNull("uid_v")) {
-				this.uid_v = jsonuserdata.getInt("uid_v");
-				writeLog(String.format(Locale.US, "UserData: writeJSON: received: this.uid_v: %d", this.uid_v));
+			if (!jsonuserdata.isNull("uid_v") && jsonuserdata.get("uid_v") instanceof Integer) {
+				long uid_value;
+				uid_value = (long) jsonuserdata.getInt("uid_v");
+				if (uid_value > 0) {
+					this.uid_v = uid_value;
+				}
+				writeLog(String.format(Locale.US, "UserData: writeJSON: received an Integer: this.uid_v: %d", this.uid_v));
 			} else {
-				returnval = -1;
+				if (!jsonuserdata.isNull("uid_v") && jsonuserdata.get("uid_v") instanceof Long) {
+					long uid_value;
+					uid_value = jsonuserdata.getLong("uid_v");
+					if (uid_value > 0) {
+						this.uid_v = uid_value;
+					}
+					writeLog(String.format(Locale.US, "UserData: writeJSON: received a Long: this.uid_v: %d", this.uid_v));
+				}
 			}
 			if (!jsonuserdata.isNull("uid") && jsonuserdata.get("uid") instanceof String) {
 				this.uid = jsonuserdata.getString("uid");
@@ -342,11 +352,9 @@ public class UserData implements Serializable {
 			} else {
 				returnval = -8;
 			}
-			if (!jsonuserdata.isNull("gender")) {
+			if (!jsonuserdata.isNull("gender") && jsonuserdata.get("gender") instanceof String) {
 				this.gender = jsonuserdata.get("gender").toString();
 				writeLog(String.format("UserData: writeJSON: %s", this.gender));
-			} else {
-				returnval = -9;
 			}
 			if (!jsonuserdata.isNull("metric")) {
 				this.metric = jsonuserdata.get("metric").toString();
@@ -495,6 +503,7 @@ public class UserData implements Serializable {
 			this.age = calendar_now.get(Calendar.YEAR) - calendar_birth.get(Calendar.YEAR);
 			this.getValues();
 		} catch (JSONException | ParseException e) {
+			writeLog(String.format(Locale.US, "UserData:fromJSON: EXCEPTION: %s", e.toString()));
 			e.printStackTrace();
 		}
 		return (returnval);
