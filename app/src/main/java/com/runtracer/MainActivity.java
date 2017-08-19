@@ -60,6 +60,7 @@ import com.runtracer.services.DataBaseExchange;
 import com.runtracer.services.ServerDataService;
 import com.runtracer.services.SimpleOAuth2Token;
 import com.runtracer.sqlitedb.SqliteHandler;
+import com.runtracer.utilities.DataPersistence;
 import com.runtracer.utilities.PrintValue;
 import com.runtracer.utilities.TypeCheck;
 
@@ -174,6 +175,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private GoogleApiClient mGoogleApiClient;
 	private Button mNewUserButton;
 	private Button mEmailSignInButton;
+	private DataPersistence dataPersistence;
 
 	public MainActivity() {
 	}
@@ -236,8 +238,18 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		try {
 			String path;
 			path = getPackageDirectory();
+			dataPersistence = new DataPersistence(path);
+			if (dataPersistence.fileExists("user_data.obj")) {
+				Object object = dataPersistence.readFile("user_data.obj");
+				if (object != null && object instanceof UserData) {
+					user_bio = (UserData) object;
+				}
+			}
+
 			File sqlitedbfile = new File(path, "sqlitedbfile.user");
 			sqliteHandler = new SqliteHandler(MainActivity.this, sqlitedbfile.getAbsolutePath());
+
+
 		} catch (PackageManager.NameNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -346,23 +358,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		user_bio.setNo_runs(sqliteHandler.getNoRunSummaries());
 		try {
 			ArrayList<String> results;
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_uid);
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid);
 			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_distance);
 			user_bio.setTotal_distance_km(sumArrayList(results));
 			writeLog("updateStats(): user_bio.getTotal_distance_km(): " + user_bio.getTotal_distance_km());
-
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_gps_distance);
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_average_speed);
 			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_calories_distance);
 			user_bio.setTotal_calories(sumArrayList(results));
 			writeLog("updateStats(): user_bio.getTotal_calories(): " + user_bio.getTotal_calories());
-
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_calories_heart_beat);
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_current_weight);
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_current_fat);
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_date_start);
-			results = sqliteHandler.getAllRunSummaries(SqliteHandler.field_date_end);
 		} catch (NumberFormatException e) {
 			writeLog("MainActivity: updateStats(): NUMBER FORMAT EXCEPTION: " + e.toString());
 		}
@@ -644,6 +645,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	}
 
 	private void changeUserData() {
+		dataPersistence.writeFile(user_bio, "user_data.obj");
 		boolean dataok = false;
 		if (newUser == null && user_bio != null && simpleOAuth2Token != null && !simpleOAuth2Token.isExpired()) {
 			try {
@@ -1230,7 +1232,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 		public void processResponse(DataBaseExchange dbEx) {
 			Boolean bUserAlreadyCreated;
 			Boolean bUserStatusReady;
-			Boolean bUserValidated = false;
 			int sender = 0;
 			try {
 				if (dbEx.getError_no() > 0 && dbEx.getAttemptNo() < dbEx.getMaxAttempts()) {

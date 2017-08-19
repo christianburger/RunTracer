@@ -1,5 +1,6 @@
 package com.runtracer.model;
 
+import android.text.format.DateFormat;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -24,8 +25,8 @@ import lombok.ToString;
 @Setter
 public class UserData implements Serializable {
 	private final long serialVersionUID = 100L;
-	private final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
-	private final SimpleDateFormat local_format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.getDefault());
+	private final static SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CANADA);
+	private final static SimpleDateFormat local_format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.getDefault());
 	private final String TAG = "user_data";
 
 	private final int RESTING_NO_READINGS = 20;
@@ -116,8 +117,8 @@ public class UserData implements Serializable {
 	}
 
 	public int getValues() {
+		writeLog("UserData:getValues()");
 		this.cff = 1.00;
-		writeLog(String.format("UserData:getValues(): cff: %s", this.getCff()));
 		if (this.first_name != null && this.last_name != null && this.first_name.length() > 4 && this.last_name.length() > 4) {
 			this.full_name = this.first_name + " " + this.last_name;
 		} else {
@@ -133,20 +134,10 @@ public class UserData implements Serializable {
 			}
 		}
 		this.total_distance_miles = this.total_distance_km * this.conv_km_miles;
-		writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-		if ((this.created != null) && !(this.created.compareTo("0") == 0) && !(this.created.compareTo("1") == 0)) {
-			try {
-				writeLog(String.format("inside try: created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-				this.created_v = new Date();
-				writeLog(String.format("inside if 03: created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-				this.created_v = date_format.parse(this.created);
-				writeLog(String.format("inside if 04: created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
-				writeLog(String.format("UserData: created_v: %s", this.created_v.toString()));
-			} catch (ParseException e) {
-				writeLog(String.format("UserData: parseException: %s", e.toString()));
-				e.printStackTrace();
-			}
+		if (this.getCreated_v() != null) {
+			this.created = date_format.format(this.getCreated_v());
 		}
+		writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
 		try {
 			writeLog(String.format("created: %s, created_at: %s, created_v: %s", created, created_at, created_v));
 			if (this.current_weight_v <= 0 && this.current_weight != null && this.current_weight.length() > 2) {
@@ -170,12 +161,10 @@ public class UserData implements Serializable {
 		} catch (NumberFormatException nfe) {
 			writeLog("YES, GOT AN EXCEPTION: " + nfe.getMessage());
 		}
-
 		this.current_weight_v_imperial = current_weight_v * conv_kg_lbs;
 		this.height_v_imperial = this.height_v * conv_cm_inches;
 		this.hip_circumference_v_imperial = this.hip_circumference_v * conv_cm_inches;
 		this.target_weight_v_imperial = this.target_weight_v * conv_kg_lbs;
-
 		/*For males: BMR = (13.75 x WKG) + (5 x HC) - (6.76 x age) + 66
 			For females: BMR = (9.56 x WKG) + (1.85 x HC) - (4.68 x age) + 655 */
 		if (this.gender != null && this.gender.compareToIgnoreCase("male") == 0) {
@@ -198,7 +187,6 @@ public class UserData implements Serializable {
 		if (this.resting_hr > 0) {
 			this.vo2max = 15.3 * (this.maximum_hr / this.resting_hr);
 		}
-
 		/*
 		For VO2max ≥ 56 mL•kg-1•min-1:
 		CFF = 1.00
@@ -251,6 +239,7 @@ public class UserData implements Serializable {
 
 		return 0;
 	}
+
 	private JSONObject createJSON() {
 		JSONObject jsonuserdata = null;
 		try {
@@ -265,7 +254,7 @@ public class UserData implements Serializable {
 			jsonuserdata.put("id_token", this.getIdToken());
 			jsonuserdata.put("gender", this.getGender());
 			jsonuserdata.put("metric", this.getMetric());
-			if (this.birthday_date != null) {
+			if (this.getBirthday_date()!= null) {
 				jsonuserdata.put("birthday", date_format.format(this.getBirthday_date()));
 			}
 			jsonuserdata.put("height_v", this.getHeight_v());
@@ -520,9 +509,10 @@ public class UserData implements Serializable {
 	}
 
 	public void writeLog(String msg) {
-		Date datenow = new Date();
-		String date = date_format.format(datenow);
-		Log.e(TAG, date + ": " + msg);
+		Date cdate;
+		String date = (DateFormat.format("dd-MM-yyyy hh:mm:ss a", cdate = new Date()).toString());
+		String msg2 = String.format(Locale.US, "<%d>", cdate.getTime());
+		Log.e(TAG, date + msg2 + ": " + msg);
 	}
 
 	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
@@ -656,8 +646,12 @@ public class UserData implements Serializable {
 	}
 
 	public boolean clean() {
-		uid = null;
 		full_name = null;
+		first_name = null;
+		last_name = null;
+		uid = null;
+		uid_v = 0;
+		idToken = null;
 		birthday = null;
 		gender = null;
 		height = null;

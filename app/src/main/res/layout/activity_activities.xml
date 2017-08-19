@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <android.support.design.widget.CoordinatorLayout
 	android:id="@+id/coordinator_layout"
 	xmlns:android="http://schemas.android.com/apk/res/android"
@@ -11,7 +10,6 @@
 	android:fitsSystemWindows="true"
 	android:nestedScrollingEnabled="true"
 	tools:context="com.runtracer.ActivitiesActivity">
-
 
 	<RelativeLayout
 		android:id="@+id/activitySummary"
@@ -34,40 +32,75 @@
 			<android.support.design.widget.CollapsingToolbarLayout
 				android:id="@+id/toolbar_layout"
 				style="@android:style/Holo.ButtonBar"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
 				android:fitsSystemWindows="true"
 				android:focusable="false"
-				android:nestedScrollingEnabled="true"
-				>
+				android:nestedScrollingEnabled="true">
 
 				<android.support.v7.widget.Toolbar
 					android:id="@+id/toolbar"
-					android:layout_width="wrap_content"
+					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
+					android:paddingBottom="40dp"
 					app:layout_collapseMode="pin"
 					app:popupTheme="@style/AppTheme.PopupOverlay"/>
 
-				<TextView
-					android:id="@+id/activity_summary"
-					style="@android:style/DeviceDefault.ButtonBar"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_marginLeft="20dp"
-					android:autoText="false"
-					android:lines="20"
-					android:nestedScrollingEnabled="false"
-					android:textSize="18sp"/>
+				<RelativeLayout
+					android:id="@+id/toolbarContent"
+					xmlns:android="http://schemas.android.com/apk/res/android"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:nestedScrollingEnabled="true"
+					android:theme="@style/AppTheme"
+					android:visibility="visible">
 
+
+					<TextView
+						android:id="@+id/activity_summary"
+						style="@android:style/DeviceDefault.ButtonBar"
+						android:layout_width="match_parent"
+						android:layout_height="120dp"
+						android:layout_marginLeft="20dp"
+						android:layout_marginRight="20dp"
+						android:autoText="true"
+						android:lines="20"
+						android:nestedScrollingEnabled="true"
+						android:textColor="@android:color/background_light"
+						android:textColorLink="@android:color/holo_blue_dark"
+						android:textSize="14sp"
+						tools:backgroundTint="@color/translucent_white"/>
+
+					<android.support.design.widget.FloatingActionButton
+						android:id="@+id/fab"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_alignParentRight="true"
+						android:layout_below="@id/activity_summary"
+						android:layout_marginRight="@dimen/fab_margin"
+						android:src="@android:drawable/ic_dialog_email"
+						app:backgroundTint="@android:color/holo_orange_dark"
+						app:fabSize="mini"/>
+
+					<android.support.design.widget.FloatingActionButton
+						android:id="@+id/fab_show_chart"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_below="@id/activity_summary"
+						android:layout_marginRight="@dimen/fab_margin"
+						android:layout_toLeftOf="@id/fab"
+						android:src="@android:drawable/arrow_up_float"
+						app:backgroundTint="@android:color/holo_orange_dark"
+						app:fabSize="mini"/>
+				</RelativeLayout>
 			</android.support.design.widget.CollapsingToolbarLayout>
 		</android.support.design.widget.AppBarLayout>
-
 
 		<ExpandableListView
 			android:id="@+id/activities_list1"
 			style="@android:style/Widget.DeviceDefault.Light"
 			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
+			android:layout_height="match_parent"
 			android:layout_below="@id/app_bar"
 			android:layout_marginBottom="20dp"
 			android:background="@android:color/transparent"
@@ -77,27 +110,5 @@
 			android:smoothScrollbar="false"
 			app:layout_anchor="@id/app_bar"
 			app:layout_anchorGravity="bottom|right|end"/>
-
-
-		<android.support.design.widget.FloatingActionButton
-			android:id="@+id/fab"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_alignParentBottom="true"
-			android:layout_alignParentRight="true"
-			android:layout_margin="@dimen/fab_margin"
-			android:layout_marginBottom="120dp"
-			android:src="@android:drawable/ic_dialog_email"/>
-
-		<android.support.design.widget.FloatingActionButton
-			android:id="@+id/fab_show_chart"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_alignParentBottom="true"
-			android:layout_margin="@dimen/fab_margin"
-			android:layout_marginBottom="120dp"
-			android:layout_toLeftOf="@id/fab"
-			android:src="@android:drawable/arrow_up_float"/>
-
 	</RelativeLayout>
 </android.support.design.widget.CoordinatorLayout>

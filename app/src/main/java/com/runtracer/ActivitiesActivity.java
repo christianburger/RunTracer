@@ -72,8 +72,11 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		writeLog(String.format("ActivitiesActivity: onCreate(): sqlite size: %s", sqliteHandler.getAllRunSummaries(SqliteHandler.field_runid).size()));
 		mEmail = (FloatingActionButton) findViewById(R.id.fab);
 		mEmail.setOnClickListener(this);
+		mEmail.hide();
+
 		mShowChart = (FloatingActionButton) findViewById(R.id.fab_show_chart);
 		mShowChart.setOnClickListener(this);
+		mShowChart.hide();
 
 		mAppBarLayout = (AppBarLayout) findViewById(R.id.app_bar);
 		mCollapsingToolbar = (CollapsingToolbarLayout) findViewById(R.id.toolbar_layout);
@@ -89,13 +92,13 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		getActivities();
 		mActivitySummary = (TextView) findViewById(R.id.activity_summary);
 		mActivitySummary.setText(R.string.title_activity_activities);
+		mActivitySummary.setTextSize(32);
 		mActivityListAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
 		mActivitiesList = (ExpandableListView) findViewById(R.id.activities_list1);
 		prepareListData();
 		mActivityListAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
 		mActivitiesList.setAdapter(mActivityListAdapter);
 		mActivitiesList.setOnGroupClickListener(new ExpandableListView.OnGroupClickListener() {
-
 			@Override
 			public boolean onGroupClick(ExpandableListView parent, View v, int groupPosition, long id) {
 				return false;
@@ -139,11 +142,15 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 			writeLog(String.format(Locale.US, "showActivity: after this.selected_run_id: %d", this.selected_run_id));
 			String info = "Selected Activity\n\n";
 			info += this.getActivityInfo(this.selected_run_id);
+			String fontSettings;
+			mActivitySummary.setTextSize(16);
 			mActivitySummary.setText(info);
 			mAppBarLayout.setExpanded(false);
 			mAppBarLayout.setFitsSystemWindows(true);
 			mToolbar.setTitle(null);
 			mToolbar.setSubtitle(null);
+			mEmail.show();
+			mShowChart.show();
 		} else {
 			return false;
 		}
@@ -153,17 +160,18 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 	public String getActivityInfo(long ckey) {
 		String info = "";
 		if (filteredActivityInfoMap.containsKey(ckey)) {
-			info += String.format(Locale.CANADA, "\tRunID: \t%d", ckey);
+			//info += String.format(Locale.CANADA, "\tRunID: \t%d", ckey);
 			RunData lrun;
 			lrun = (RunData) filteredActivityInfoMap.get(ckey);
 			lrun.getValues();
 			String duration;
 			long duration_v = (lrun.getRun_date_end_v().getTime() - lrun.getRun_date_start_v().getTime()) / 1000;
 			duration = String.format(Locale.CANADA, "%d s", duration_v);
-			info += String.format(Locale.US, "\n\tTime: \t%s", lrun.getRun_date_start());
+			//info += String.format(Locale.US, "\n\tTime: \t%s", lrun.getRun_date_start());
+			info += String.format(Locale.US, "\t%s", lrun.getRun_date_start());
 			info += String.format(Locale.US, "\n\tCalories: \t%.2f KCal ", lrun.getCalories_v_distance());
 			info += String.format(Locale.US, "\n\tDuration: \t%s", duration);
-			info += String.format(Locale.US, "\n\tDistance: %.2f Km ", lrun.getCalories_v_distance());
+			info += String.format(Locale.US, "\n\tDistance: %.2f Km ", lrun.getDistance_km_v());
 		}
 		writeLog(String.format("getActivityInfo: %s", info));
 		return info;
@@ -262,7 +270,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 						//if(lruninfo.run_date_start_v.after(format.parse(thismonthcomparedate))) {
 						if (lruninfo.getRun_date_start_v().after(format.parse(thismonthcomparedate))) {
 							//thisMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
-							thisMonth.add(getActivityInfo((int) lruninfo.getRun_id_v()));
+							thisMonth.add(getActivityInfo(lruninfo.getRun_id_v()));
 						}
 						if (lruninfo.getRun_date_start_v().after(format.parse(lastmonthcomparedate)) && lruninfo.getRun_date_start_v().before(format.parse(thismonthcomparedate))) {
 							//lastMonth.add(String.format("run_id: %d, %s", lruninfo.run_id_v, lruninfo.run_date_start));
