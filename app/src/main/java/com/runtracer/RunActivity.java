@@ -332,12 +332,14 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 	}
 
 	private boolean storeRunData() {
-		JSONObject runinfo = run_data.toJSON();
-		try {
-			runinfo.put("uid", user_bio.getUid());
-			sqliteHandler.addRunSummary(runinfo);
-		} catch (JSONException e) {
-			e.printStackTrace();
+		if (run_data.getDistance_km_v() > 0) {
+			JSONObject runinfo = run_data.toJSON();
+			try {
+				runinfo.put("uid", user_bio.getUid());
+				sqliteHandler.addRunSummary(runinfo);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
 		}
 		return true;
 	}
@@ -1004,7 +1006,7 @@ public class RunActivity extends Activity implements View.OnClickListener, Senso
 					runInstant.setRunID(run_data.getRun_id_v());
 					runInstant.setCtime(new Date().getTime());
 					runInstant.setCurrent_motion_speed_km_h_v(run_data.getAverage_speed_km_h_v());
-					runInstant.setCurrent_motion_distance_km_v(avg_distance);
+					runInstant.setCurrent_motion_distance_km_v(run_data.getDistance_km_v());
 					runInstant.setCurrent_gps_speed_km_h(this.gps_speed);
 					runInstant.setCurrent_gps_distance_km(run_data.getGps_distance_km());
 					runInstant.setCalories_v_distance(run_data.getCalories_v_distance());

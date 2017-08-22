@@ -86,8 +86,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int MAX_ATTEMPTS = 10;
 
 	private static final String TAG = "runtracer";
-	private static final String URL = "http://192.168.1.101";
-	//private static final String URL= "http://appsynthetizer.com";
+	//private static final String URL = "http://192.168.1.101";
+	private static final String URL= "http://appsynthetizer.com";
 
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 

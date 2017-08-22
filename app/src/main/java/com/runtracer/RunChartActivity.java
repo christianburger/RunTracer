@@ -150,9 +150,9 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "  data.addColumn('number', \"Heart Rate\");";
 		code += "\n";
-		code += "  data.addColumn('number', \"Calories (distance)\");";
+		code += "  data.addColumn('number', \"Calories from distance)\");";
 		code += "\n";
-		code += "  data.addColumn('number', \"Calories (heart rate)\");";
+		code += "  data.addColumn('number', \"Calories from heart rate)\");";
 		code += "\n";
 		code += "  data.addRows([";
 		code += "\n";
@@ -167,7 +167,7 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 				speed = runInstant.getCurrent_motion_speed_km_h_v() * run_data.getConv_km_miles();
 			}
 			writeLog(String.format(Locale.CANADA, "RunChartActivity: speed: %.4f  nf.format(speed): %s", speed, nf.format(speed)));
-			code += String.format(Locale.CANADA, "\n[%d, %d, %s, %s, %s],", (runInstant.getCtime() - starting_time) / 1000, runInstant.getCurrent_heart_rate(), nf.format(speed), nf.format(runInstant.getCalories_v_distance()), nf.format(runInstant.getCalories_v_heart_beat()));
+			code += String.format(Locale.CANADA, "\n[%d, %s, %s, %s, %s],", (runInstant.getCtime() - starting_time) / 1000, nf.format(speed), runInstant.getCurrent_heart_rate(), nf.format(runInstant.getCalories_v_distance()), nf.format(runInstant.getCalories_v_heart_beat()));
 		}
 
 
@@ -216,9 +216,9 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		code += "\n";
 		code += "        HeartRate: {label: 'Heart Rate (Hz)'},";
 		code += "\n";
-		code += "        CaloriesDistance: {label: 'Calories (kCal)'},";
+		code += "        CaloriesDistance: {label: 'Calories from Distance (kCal)'},";
 		code += "\n";
-		code += "        CaloriesHeart: {label: 'Calories (kCal)'}";
+		code += "        CaloriesHeart: {label: 'Calories from Heart Rate (kCal)'}";
 		code += "\n";
 		code += "      },";
 		code += "\n";
