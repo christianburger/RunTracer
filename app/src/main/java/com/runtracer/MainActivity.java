@@ -86,8 +86,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int MAX_ATTEMPTS = 10;
 
 	private static final String TAG = "runtracer";
-	//private static final String URL = "http://192.168.1.101";
-	private static final String URL= "http://appsynthetizer.com";
+	private static final String URL = "http://192.168.1.101";
+	//private static final String URL= "http://appsynthetizer.com";
 
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 
@@ -201,6 +201,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				.penaltyDeath()
 				.build());
 		}
+
 		super.onCreate(savedInstanceState);
 
 		new SimpleEula(this).show();
@@ -598,7 +599,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				available.acquire();
 				dbExchange.clear();
 				dbExchange.setMaxAttempts(12);
-				dbExchange.setUrl(new URL(URL + ":8080/auth/oauth/token"));
+				dbExchange.setUrl(new URL(URL + ":8080/oauth/token"));
 				dbExchange.setCommand("get_token");
 				dbExchange.setGrant_type("client_credentials");
 				dbExchange.setMethod("POST");
