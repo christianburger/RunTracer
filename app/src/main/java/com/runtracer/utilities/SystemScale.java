@@ -6,7 +6,7 @@ import android.view.WindowManager;
 
 public class SystemScale {
 
-	static int getScaleY(Context context, int pic_height) {
+	static public int getScaleY(Context context, int pic_height) {
 		Display display = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
 		int height = display.getHeight();
 		Double val;
@@ -15,7 +15,7 @@ public class SystemScale {
 		return val.intValue();
 	}
 
-	static int getScaleX(Context context, int pic_width) {
+	static public int getScaleX(Context context, int pic_width) {
 		Display display = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
 		int width = display.getWidth();
 		Double val;

@@ -1,7 +1,10 @@
 package com.runtracer;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -12,8 +15,10 @@ import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.runtracer.model.RunData;
@@ -39,18 +44,19 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 	boolean showingMap;
 
 	//GUI elements
-	WebView mChartView;
+	WebView webView;
 	WebSettings webSettings;
 
 	FloatingActionButton mDrawMap;
 	private RunData run_data;
 	private UserData user_data;
 
+	@SuppressLint({"JavascriptInterface", "SetJavaScriptEnabled"})
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_run_chart);
-		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+		Toolbar toolbar = findViewById(R.id.toolbar);
 		setSupportActionBar(toolbar);
 
 		sqliteHandler = MainActivity.sqliteHandler;
@@ -63,14 +69,15 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 		mDrawChart.setOnClickListener(this);
 		*/
 
-		mChartView = (WebView) findViewById(R.id.webView);
-		mChartView.setBackgroundColor(Color.LTGRAY);
-		mChartView.setPadding(0, 0, 0, 0);
-		webSettings = mChartView.getSettings();
+		webView = findViewById(R.id.webView);
+		webView.setBackgroundColor(Color.LTGRAY);
+		webView.setPadding(0, 0, 0, 0);
+		webSettings = webView.getSettings();
 		webSettings.setJavaScriptEnabled(true);
-		mChartView.addJavascriptInterface(new WebAppInterface(this), "Android");
-		mChartView.getSettings().setBuiltInZoomControls(true);
-		mChartView.getSettings().setDefaultZoom(WebSettings.ZoomDensity.CLOSE);
+
+		webView.addJavascriptInterface(new WebAppInterface(this), "Android");
+		webView.getSettings().setBuiltInZoomControls(true);
+		webView.getSettings().setDefaultZoom(WebSettings.ZoomDensity.CLOSE);
 
 		orientation = getResources().getConfiguration().orientation;
 
@@ -89,31 +96,68 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 			writeLog(String.format(Locale.CANADA, "RunChartActivity: calling updateWebView: uid: %s", run_data.getUid()));
 			updateWebview();
 		}
-		getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+		//getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 	}
 
-	boolean updateWebview() {
+	@SuppressLint("SetJavaScriptEnabled")
+	void updateWebview() {
 		writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: uid: %s", run_data.getUid()));
 		if (run_data != null) {
 			try {
+				Display display = getWindowManager().getDefaultDisplay();
+				Point size = new Point();
+				display.getSize(size);
+				int width = size.x;
+				int height = size.y;
+
 				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: getDateValues: %s", run_data.getDateValues()));
 				no_xpoints = run_data.getDateValues();
 				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: no_xpoints: %s", no_xpoints));
 				if (showingMap) {
-					jscript = generateJSMapCode(1200 + no_xpoints, 800);
-					mChartView.setInitialScale(getScaleY(1200));
+					jscript = generateJSMapCode(width + no_xpoints, height);
+					webView.setInitialScale(getScaleY(height));
 				} else {
-					jscript = generateJSCode(1200 + no_xpoints, 800);
-					mChartView.setInitialScale(getScaleY(1200 * orientation));
+					jscript = generateJSCode(width + no_xpoints, height);
+					webView.setInitialScale(getScaleY(height * orientation));
 				}
-				mChartView.getSettings().setLoadWithOverviewMode(true);
-				mChartView.getSettings().setUseWideViewPort(true);
-				mChartView.loadData(jscript, "text/html", null);
+				webView.getSettings().setLoadWithOverviewMode(true);
+				webView.getSettings().setUseWideViewPort(true);
+				webView.getSettings().setJavaScriptEnabled(true);
+
+				final Activity activity = this;
+				webView.setWebChromeClient(new WebChromeClient() {
+					public void onProgressChanged(WebView view, int progress) {
+						// Activities and WebViews measure progress with different scales.
+						// The progress meter will automatically disappear when we reach 100%
+						activity.setProgress(progress * 1000);
+					}
+				});
+
+				webView.setWebViewClient(new WebViewClient() {
+					public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+						Toast.makeText(activity, "Oh no! " + description, Toast.LENGTH_SHORT).show();
+					}
+				});
+
+				//webView.loadUrl("https://developer.android.com/");
+				webView.setWebChromeClient(new WebChromeClient());
+				webView.setMinimumHeight(height);
+				webView.setMinimumWidth(width);
+
+				webView.loadData(jscript, "text/html", null);
+				//webView.loadUrl("https://google.com", null);
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: jscript: %s", jscript));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: hwight: %s", webView.getHeight()));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: width: %s", webView.getWidth()));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: content height: %s", webView.getContentHeight()));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: content description: %s", webView.getContentDescription()));
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: url: %s", webView.getUrl()));
+
+				writeLog(String.format(Locale.CANADA, "RunChartActivity: updateWebview: : \n\n%s\n\n", jscript));
 			} catch (ParseException | UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
 		}
-		return (true);
 	}
 
 	private String generateMaterialChart(int c_width, int c_height) throws UnsupportedEncodingException {
@@ -439,8 +483,8 @@ public class RunChartActivity extends AppCompatActivity implements View.OnClickL
 				/*
 				case R.id.fab_draw_chart:
 					jscript = generateJSCode(1200 + no_xpoints, 800);
-					mChartView.setInitialScale(getScaleY(1200));
-					mChartView.loadData(jscript, "text/html", null);
+					webView.setInitialScale(getScaleY(1200));
+					webView.loadData(jscript, "text/html", null);
 					break;
 				*/
 				case R.id.fab_draw_map:

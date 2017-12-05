@@ -3,6 +3,7 @@ package com.runtracer;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
@@ -12,6 +13,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.widget.ExpandableListView;
@@ -37,6 +39,8 @@ import java.util.List;
 import java.util.Locale;
 
 public class ActivitiesActivity extends AppCompatActivity implements View.OnClickListener {
+
+	public String baseresourceserverurl = "https://www.runtracer.com";
 	private static final String TAG = "activities";
 	private static final int SHOW_CHART = 1001;
 
@@ -325,8 +329,7 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		FirebaseUserActions.getInstance().end(getIndexApiAction());
 	}
 
-	protected int sendEmail() {
-
+	protected void sendEmail() {
 		Intent i = new Intent(Intent.ACTION_SEND);
 		i.setType("message/rfc822");
 		i.putExtra(Intent.EXTRA_EMAIL, new String[]{"admin@runtracer.com"});
@@ -337,11 +340,22 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		} catch (ActivityNotFoundException ex) {
 			Toast.makeText(ActivitiesActivity.this, "There are no email clients installed.", Toast.LENGTH_SHORT).show();
 		}
-		return (0);
 	}
 
-	public void showRunChart() {
+	public void showRunChart(int width, int height) {
+
 		if (this.selected_run_id > 0) {
+			/*
+			String urlstring = this.baseresourceserverurl + "/chart?uid=" + MainActivity.user_bio.getUid();
+			urlstring += "&runid=" + this.selected_run_id;
+			urlstring += "&c_width=" + width;
+			urlstring += "&c_height=" + height;
+
+			Uri uri = Uri.parse(urlstring);
+			Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+			startActivity(intent);
+			*/
+
 			Intent intent = new Intent(this, RunChartActivity.class);
 			intent.putExtra("run_data", String.valueOf(this.selected_run_id));
 			startActivityForResult(intent, SHOW_CHART);
@@ -358,7 +372,12 @@ public class ActivitiesActivity extends AppCompatActivity implements View.OnClic
 		switch (v.getId()) {
 			case R.id.fab_show_chart:
 				Snackbar.make(v, "Showing the chart for selected activity now.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-				showRunChart();
+				Display display = getWindowManager().getDefaultDisplay();
+				Point size = new Point();
+				display.getSize(size);
+				int width = size.x;
+				int height = size.y;
+				showRunChart(width, height);
 				break;
 
 			case R.id.fab:

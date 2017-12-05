@@ -86,8 +86,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int MAX_ATTEMPTS = 10;
 
 	private static final String TAG = "runtracer";
-	private static final String URL = "http://192.168.1.101";
-	//private static final String URL= "http://appsynthetizer.com";
+	// private static final String URL = "http://192.168.1.101";
+	private static final String URL= "https://www.runtracer.com";
 
 	public static final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
 
@@ -134,7 +134,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 	private static final int auth_user = 101104;
 	private static final int send_run_data = 101105;
 	private static final int send_run_instant = 101106;
-	private static final int sync_command = 101107;
+	private static final int send_chart= 101107;
+	private static final int sync_command = 101108;
 
 	/* View to display current status (signed-in, signed-out, disconnected, etc) */
 	private TextView mStatus;
@@ -599,7 +600,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 				available.acquire();
 				dbExchange.clear();
 				dbExchange.setMaxAttempts(12);
-				dbExchange.setUrl(new URL(URL + ":8080/oauth/token"));
+				dbExchange.setUrl(new URL(URL + ":444/oauth/token"));
 				dbExchange.setCommand("get_token");
 				dbExchange.setGrant_type("client_credentials");
 				dbExchange.setMethod("POST");
@@ -1407,10 +1408,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener, 
 
 					default:
 				}
-			} catch (CloneNotSupportedException |
-				JSONException e)
-
-			{
+			} catch (CloneNotSupportedException | JSONException e) {
 				e.printStackTrace();
 			}
 		}
